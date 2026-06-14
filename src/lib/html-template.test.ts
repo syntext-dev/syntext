@@ -13,7 +13,7 @@ describe('generateStaticHtml', () => {
   it('should generate valid HTML with doctype', () => {
     const html = generateStaticHtml(defaultOptions)
     expect(html).toStartWith('<!DOCTYPE html>')
-    expect(html).toContain('<html lang="en">')
+    expect(html).toContain('<html lang="en"')
     expect(html).toContain('</html>')
   })
 
@@ -29,15 +29,15 @@ describe('generateStaticHtml', () => {
 
   it('should include custom color CSS variables', () => {
     const html = generateStaticHtml(defaultOptions)
-    expect(html).toContain('--color-primary: #ff0000')
-    expect(html).toContain('--color-accent: #00ff00')
+    expect(html).toContain('--stx-primary: #ff0000')
+    expect(html).toContain('--stx-accent: #00ff00')
   })
 
   it('should use default colors when not provided', () => {
     const options = { ...defaultOptions, config: { name: 'Docs' } }
     const html = generateStaticHtml(options)
-    expect(html).toContain('--color-primary: #6366f1')
-    expect(html).toContain('--color-accent: #8b5cf6')
+    expect(html).toContain('--stx-primary: #6366f1')
+    expect(html).toContain('--stx-accent: #8b5cf6')
   })
 
   it('should render main content', () => {
