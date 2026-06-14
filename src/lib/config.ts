@@ -1,0 +1,59 @@
+import { join } from 'node:path'
+import { readFile } from 'node:fs/promises'
+
+export type SyntextConfig = {
+  name?: string
+  projectId?: string
+  theme?: string
+  colors?: {
+    primary?: string
+    accent?: string
+  }
+  navigation?: {
+    tabs?: string[]
+  }
+  logo?: {
+    light?: string
+    dark?: string
+  }
+  footer?: {
+    links?: Array<{ label: string; href: string }>
+  }
+}
+
+export async function loadConfig(rootDir: string): Promise<SyntextConfig> {
+  // Try loading syntext.config.ts
+  const configPaths = [
+    join(rootDir, 'syntext.config.ts'),
+    join(rootDir, 'syntext.config.js'),
+    join(rootDir, 'syntext.config.json'),
+  ]
+
+  for (const configPath of configPaths) {
+    try {
+      const file = Bun.file(configPath)
+      if (await file.exists()) {
+        if (configPath.endsWith('.json')) {
+          return JSON.parse(await readFile(configPath, 'utf-8'))
+        }
+        // For TS/JS configs, import them
+        const mod = await import(configPath)
+        return mod.default ?? mod
+      }
+    } catch {
+      continue
+    }
+  }
+
+  // Return defaults
+  return {
+    name: 'Documentation',
+    theme: 'default',
+    colors: { primary: '#6366f1', accent: '#8b5cf6' },
+  }
+}
+
+// Export for use in syntext init
+export function defineConfig(config: SyntextConfig): SyntextConfig {
+  return config
+}
