@@ -5,6 +5,8 @@ import { devCommand } from './commands/dev'
 import { buildCommand } from './commands/build'
 import { deployCommand } from './commands/deploy'
 import { checkCommand } from './commands/check'
+import { generateCommand } from './commands/generate'
+import { migrateCommand } from './commands/migrate'
 
 const program = new Command()
 
@@ -18,5 +20,7 @@ program.addCommand(devCommand)
 program.addCommand(buildCommand)
 program.addCommand(deployCommand)
 program.addCommand(checkCommand)
+program.addCommand(generateCommand)
+program.addCommand(migrateCommand)
 
 program.parse()

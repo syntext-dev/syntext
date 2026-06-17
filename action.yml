@@ -1,0 +1,119 @@
+name: 'Syntext Documentation Check'
+description: 'Check for documentation drift and annotation coverage'
+branding:
+  icon: 'file-text'
+  color: 'purple'
+
+inputs:
+  src:
+    description: 'Source directories to scan (comma-separated)'
+    required: false
+    default: 'src'
+  strict:
+    description: 'Treat warnings as errors'
+    required: false
+    default: 'false'
+  require-annotations:
+    description: 'Require @stx annotations on all exported functions'
+    required: false
+    default: 'false'
+  comment-on-pr:
+    description: 'Post results as a PR comment'
+    required: false
+    default: 'true'
+  github-token:
+    description: 'GitHub token for PR comments'
+    required: false
+    default: '${{ github.token }}'
+
+outputs:
+  coverage:
+    description: 'Annotation coverage percentage'
+  issues:
+    description: 'Number of issues found'
+  passed:
+    description: 'Whether the check passed'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install Syntext CLI
+      shell: bash
+      run: bun add -g @syntext/cli
+
+    - name: Run documentation check
+      id: check
+      shell: bash
+      run: |
+        ARGS="--json"
+        if [ "${{ inputs.strict }}" = "true" ]; then ARGS="$ARGS --strict"; fi
+        if [ "${{ inputs.require-annotations }}" = "true" ]; then ARGS="$ARGS --require-annotations"; fi
+
+        SRC_DIRS=$(echo "${{ inputs.src }}" | tr ',' ' ')
+        RESULT=$(syntext check --src $SRC_DIRS $ARGS 2>&1 || true)
+        echo "result=$RESULT" >> $GITHUB_OUTPUT
+
+        # Extract values
+        COVERAGE=$(echo "$RESULT" | jq -r '.coverage // 100')
+        ISSUES=$(echo "$RESULT" | jq -r '.issues | length')
+        echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+        echo "issues=$ISSUES" >> $GITHUB_OUTPUT
+
+        if echo "$RESULT" | jq -e '.issues[] | select(.type == "error")' > /dev/null 2>&1; then
+          echo "passed=false" >> $GITHUB_OUTPUT
+        else
+          echo "passed=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Generate markdown report
+      if: inputs.comment-on-pr == 'true' && github.event_name == 'pull_request'
+      id: report
+      shell: bash
+      run: |
+        SRC_DIRS=$(echo "${{ inputs.src }}" | tr ',' ' ')
+        ARGS="--markdown"
+        if [ "${{ inputs.strict }}" = "true" ]; then ARGS="$ARGS --strict"; fi
+        if [ "${{ inputs.require-annotations }}" = "true" ]; then ARGS="$ARGS --require-annotations"; fi
+        REPORT=$(syntext check --src $SRC_DIRS $ARGS 2>&1 || true)
+        echo "report<<EOF" >> $GITHUB_OUTPUT
+        echo "$REPORT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Comment on PR
+      if: inputs.comment-on-pr == 'true' && github.event_name == 'pull_request' && steps.report.outputs.report != ''
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const body = `${{ steps.report.outputs.report }}`;
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          const existing = comments.find(c => c.body?.includes('Syntext Documentation Check'));
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+          }
+
+    - name: Fail if errors
+      if: steps.check.outputs.passed == 'false'
+      shell: bash
+      run: exit 1

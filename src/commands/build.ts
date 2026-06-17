@@ -33,7 +33,7 @@ export const buildCommand = new Command('build')
         files.push(file)
       }
 
-      spinner?.text = `Compiling ${files.length} pages...`
+      if (spinner) spinner.text = `Compiling ${files.length} pages...`
 
       const pages: Array<{ slug: string; html: string; frontmatter: Record<string, unknown>; toc: any[] }> = []
       const errors: Array<{ file: string; error: string }> = []

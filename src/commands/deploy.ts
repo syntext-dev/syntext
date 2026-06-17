@@ -21,7 +21,7 @@ export const deployCommand = new Command('deploy')
         throw new Error('Not authenticated. Run `syntext login` first.')
       }
 
-      spinner?.text = 'Building documentation...'
+      if (spinner) spinner.text = 'Building documentation...'
 
       // Build first
       const outDir = join(rootDir, 'dist')
@@ -32,7 +32,7 @@ export const deployCommand = new Command('deploy')
         cwd: rootDir,
       })
 
-      spinner?.text = 'Uploading to Syntext...'
+      if (spinner) spinner.text = 'Uploading to Syntext...'
 
       // Upload to backend
       const apiUrl = process.env.SYNTEXT_API_URL ?? 'https://api.syntext.dev'
