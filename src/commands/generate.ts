@@ -26,7 +26,7 @@ export const generateCommand = new Command('generate')
       // Collect source files
       const srcDirs: string[] = options.src
       const files: string[] = []
-      const extensions = ['ts', 'tsx', 'js', 'jsx', 'py', 'go']
+      const extensions = ['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'php']
 
       for (const srcDir of srcDirs) {
         const fullSrcDir = join(rootDir, srcDir)

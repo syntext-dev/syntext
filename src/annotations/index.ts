@@ -1,6 +1,9 @@
 import { parseTypeScript } from './parse-typescript'
 import { parsePython } from './parse-python'
 import { parseGo } from './parse-go'
+import { parseRust } from './parse-rust'
+import { parseJava } from './parse-java'
+import { parsePhp } from './parse-php'
 import { generatePages } from './generate-mdx'
 import type { AnnotatedSymbol, GeneratedPage, SignatureHash } from './types'
 import { createHash } from 'node:crypto'
@@ -8,6 +11,9 @@ import { createHash } from 'node:crypto'
 export { parseTypeScript, parseTypeScriptSource } from './parse-typescript'
 export { parsePython, parsePythonSource } from './parse-python'
 export { parseGo, parseGoSource } from './parse-go'
+export { parseRust, parseRustSource } from './parse-rust'
+export { parseJava, parseJavaSource } from './parse-java'
+export { parsePhp, parsePhpSource } from './parse-php'
 export { parseAnnotationBlock } from './parse-annotation'
 export { generatePages } from './generate-mdx'
 export type * from './types'
@@ -35,6 +41,15 @@ export async function parseDirectory(files: string[]): Promise<AnnotatedSymbol[]
           break
         case 'go':
           symbols = await parseGo(file)
+          break
+        case 'rs':
+          symbols = await parseRust(file)
+          break
+        case 'java':
+          symbols = await parseJava(file)
+          break
+        case 'php':
+          symbols = await parsePhp(file)
           break
       }
     } catch {

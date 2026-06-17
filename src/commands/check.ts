@@ -6,6 +6,7 @@ import ora from 'ora'
 import { parseDirectory, generateSignatureHashes } from '../annotations'
 import { detectDrift, findUnannotated, loadStoredHashes, saveHashes, generateDriftReport, formatDriftMarkdown } from '../annotations/drift'
 import type { DriftConfig, DriftIssue } from '../annotations/drift'
+import { loadStyleGuide, validateStyleGuide } from '../annotations/style-guide'
 
 export const checkCommand = new Command('check')
   .description('Validate documentation and detect annotation drift')
@@ -16,6 +17,7 @@ export const checkCommand = new Command('check')
   .option('--require-annotations', 'Require @stx on all exported functions')
   .option('--save-hashes', 'Save current hashes for future drift detection')
   .option('--coverage', 'Show annotation coverage report')
+  .option('--style-guide <path>', 'Path to annotation style-guide JSON file', '.syntext/style-guide.json')
   .option('--markdown', 'Output as markdown (for PR comments)')
   .action(async (options) => {
     const rootDir = join(process.cwd(), options.dir)
@@ -73,7 +75,7 @@ export const checkCommand = new Command('check')
 
       const srcDirs: string[] = options.src
       const sourceFiles: string[] = []
-      const extensions = ['ts', 'tsx', 'js', 'jsx', 'py', 'go']
+      const extensions = ['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'php']
 
       for (const srcDir of srcDirs) {
         const fullSrcDir = join(rootDir, srcDir)
@@ -125,6 +127,20 @@ export const checkCommand = new Command('check')
           message: di.message,
           line: di.sourceLine,
         })
+      }
+
+      // Style-guide linting
+      const styleGuide = await loadStyleGuide(join(rootDir, options.styleGuide))
+      if (styleGuide) {
+        const styleIssues = validateStyleGuide(relativeSymbols, styleGuide)
+        for (const si of styleIssues) {
+          issues.push({
+            file: si.sourceFile,
+            line: si.sourceLine,
+            type: options.strict ? 'error' : 'warning',
+            message: '[style-guide] ' + si.message,
+          })
+        }
       }
 
       // Save hashes if requested

@@ -3,6 +3,9 @@ import { parseAnnotationBlock } from './parse-annotation'
 import { parseTypeScriptSource } from './parse-typescript'
 import { parsePythonSource } from './parse-python'
 import { parseGoSource } from './parse-go'
+import { parseRustSource } from './parse-rust'
+import { parseJavaSource } from './parse-java'
+import { parsePhpSource } from './parse-php'
 import { generatePages } from './generate-mdx'
 import { generateSignatureHashes, resolveEmbeds } from './index'
 
@@ -257,6 +260,48 @@ func (u *User) FullName() string {
     expect(symbols).toHaveLength(1)
     expect(symbols[0].kind).toBe('method')
     expect(symbols[0].name).toBe('FullName')
+  })
+})
+
+describe('parseRustSource', () => {
+  it('should parse rust function annotations', () => {
+    const source = `// @stx group "SDK"
+// @stx description "Initialize SDK"
+pub fn init(api_key: String) -> Result<Client> {
+  unimplemented!()
+}`
+    const symbols = parseRustSource(source, 'sdk.rs')
+    expect(symbols).toHaveLength(1)
+    expect(symbols[0].name).toBe('init')
+    expect(symbols[0].kind).toBe('function')
+  })
+})
+
+describe('parseJavaSource', () => {
+  it('should parse java method annotations', () => {
+    const source = `// @stx group "Auth"
+// @stx description "Authenticate request"
+public User authenticate(String token) {
+  return null;
+}`
+    const symbols = parseJavaSource(source, 'AuthService.java')
+    expect(symbols).toHaveLength(1)
+    expect(symbols[0].name).toBe('authenticate')
+    expect(symbols[0].kind).toBe('method')
+  })
+})
+
+describe('parsePhpSource', () => {
+  it('should parse php function annotations', () => {
+    const source = `// @stx group "Users"
+// @stx description "Create user"
+function createUser(string $email): array {
+  return [];
+}`
+    const symbols = parsePhpSource(source, 'users.php')
+    expect(symbols).toHaveLength(1)
+    expect(symbols[0].name).toBe('createUser')
+    expect(symbols[0].kind).toBe('function')
   })
 })
 
