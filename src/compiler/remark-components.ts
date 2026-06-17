@@ -8,7 +8,7 @@ type MdxJsxAttribute = {
   value: string | { type: string; value: string } | null
 }
 
-type MdxJsxFlowElement = {
+export type MdxJsxFlowElement = {
   type: 'mdxJsxFlowElement'
   name: string | null
   attributes: MdxJsxAttribute[]
@@ -203,6 +203,60 @@ function renderCardGroup(node: MdxJsxFlowElement): string {
   return `<div class="stx-card-group" style="grid-template-columns: repeat(${cols}, 1fr)">${cards}</div>`
 }
 
+function renderAccordion(node: MdxJsxFlowElement): string {
+  const title = getAttr(node, 'title') || 'Details'
+  const content = childrenToHtml(node.children, null)
+  const id = `acc-${Math.random().toString(36).slice(2, 8)}`
+
+  return `<details class="stx-accordion" id="${id}"><summary class="stx-accordion-summary"><span class="stx-accordion-title">${escapeHtml(title)}</span><svg class="stx-accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary><div class="stx-accordion-content">${content}</div></details>`
+}
+
+function renderFrame(node: MdxJsxFlowElement): string {
+  const caption = getAttr(node, 'caption') || ''
+  const content = childrenToHtml(node.children, null)
+
+  const captionHtml = caption
+    ? `<figcaption class="stx-frame-caption">${escapeHtml(caption)}</figcaption>`
+    : ''
+
+  return `<figure class="stx-frame">${content}${captionHtml}</figure>`
+}
+
+function renderEmbed(node: MdxJsxFlowElement): string {
+  const src = getAttr(node, 'src') || ''
+  const title = getAttr(node, 'title') || ''
+  const type = getAttr(node, 'type') || detectEmbedType(src)
+
+  if (type === 'youtube') {
+    const videoId = extractYouTubeId(src)
+    return `<div class="stx-embed stx-embed--video"><iframe src="https://www.youtube-nocookie.com/embed/${videoId}" title="${escapeHtml(title)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`
+  }
+
+  if (type === 'loom') {
+    const loomId = src.split('/').pop() || ''
+    return `<div class="stx-embed stx-embed--video"><iframe src="https://www.loom.com/embed/${loomId}" title="${escapeHtml(title)}" allowfullscreen loading="lazy"></iframe></div>`
+  }
+
+  if (type === 'video') {
+    return `<div class="stx-embed stx-embed--video"><video src="${escapeHtml(src)}" controls preload="metadata">${escapeHtml(title)}</video></div>`
+  }
+
+  // Generic iframe embed
+  return `<div class="stx-embed"><iframe src="${escapeHtml(src)}" title="${escapeHtml(title)}" loading="lazy" allowfullscreen></iframe></div>`
+}
+
+function detectEmbedType(src: string): string {
+  if (/youtube\.com|youtu\.be/i.test(src)) return 'youtube'
+  if (/loom\.com/i.test(src)) return 'loom'
+  if (/\.(mp4|webm|ogg)$/i.test(src)) return 'video'
+  return 'iframe'
+}
+
+function extractYouTubeId(url: string): string {
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/))([\w-]{11})/) 
+  return match ? match[1] : url
+}
+
 const componentRenderers: Record<string, (node: MdxJsxFlowElement) => string> = {
   Callout: renderCallout,
   Tabs: renderTabs,
@@ -210,7 +264,14 @@ const componentRenderers: Record<string, (node: MdxJsxFlowElement) => string> = 
   Steps: renderSteps,
   Card: renderCard,
   CardGroup: renderCardGroup,
+  Accordion: renderAccordion,
+  Frame: renderFrame,
+  Embed: renderEmbed,
 }
+
+// Dynamically merge protocol-specific component renderers
+import { protocolComponentRenderers } from './protocol-components'
+Object.assign(componentRenderers, protocolComponentRenderers)
 
 export const remarkComponents: Plugin<[], Root> = () => {
   return (tree: Root) => {

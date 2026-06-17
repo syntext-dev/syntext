@@ -60,7 +60,9 @@ description: A test page
     const source = '```typescript\nconst x = 1\n```'
     const result = await compileMdx(source)
     expect(result.html).toContain('<code')
-    expect(result.html).toContain('const x = 1')
+    // Shiki tokenizes code into individual spans
+    expect(result.html).toContain('const')
+    expect(result.html).toContain('shiki')
   })
 
   it('should handle empty frontmatter', async () => {

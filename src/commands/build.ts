@@ -7,13 +7,14 @@ import { compileMdx } from '../compiler'
 import { buildSidebar } from '../lib/sidebar'
 import { extractToc } from '../lib/toc'
 import { loadConfig } from '../lib/config'
-import { generateStaticHtml } from '../lib/html-template'
+import { generateStaticHtml, isDraftPage, generateRedirectHtml } from '../lib/html-template'
 
 export const buildCommand = new Command('build')
   .description('Build documentation site (MDX → static HTML/CSS/JS)')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
   .option('-o, --out <out>', 'Output directory', 'dist')
   .option('--json', 'Output build result as JSON')
+  .option('--include-drafts', 'Include draft pages in build')
   .action(async (options) => {
     const startTime = Date.now()
     const rootDir = join(process.cwd(), options.dir)
@@ -37,26 +38,56 @@ export const buildCommand = new Command('build')
 
       const pages: Array<{ slug: string; html: string; frontmatter: Record<string, unknown>; toc: any[] }> = []
       const errors: Array<{ file: string; error: string }> = []
+      let draftCount = 0
 
-      for (const file of files) {
-        const filePath = join(docsDir, file)
-        const content = await readFile(filePath, 'utf-8')
-        const slug = file.replace(/\.(md|mdx)$/, '').replace(/\/index$/, '') || 'index'
+      // Parallel compilation for performance (batch of 10 concurrent compiles)
+      const BATCH_SIZE = 10
+      const batches: string[][] = []
+      for (let i = 0; i < files.length; i += BATCH_SIZE) {
+        batches.push(files.slice(i, i + BATCH_SIZE))
+      }
 
-        try {
-          const { html, frontmatter } = await compileMdx(content)
-          const toc = extractToc(content)
-          pages.push({ slug, html, frontmatter, toc })
-        } catch (err) {
-          errors.push({ file, error: (err as Error).message })
+      for (const batch of batches) {
+        const results = await Promise.allSettled(
+          batch.map(async (file) => {
+            const filePath = join(docsDir, file)
+            const content = await readFile(filePath, 'utf-8')
+            const slug = file.replace(/\.(md|mdx)$/, '').replace(/\/index$/, '') || 'index'
+            const { html, frontmatter } = await compileMdx(content)
+            const toc = extractToc(content)
+            return { slug, html, frontmatter, toc, file }
+          })
+        )
+
+        for (const result of results) {
+          if (result.status === 'fulfilled') {
+            const { slug, html, frontmatter, toc } = result.value
+            // Filter draft pages unless --include-drafts
+            if (isDraftPage(frontmatter) && !options.includeDrafts) {
+              draftCount++
+              continue
+            }
+            pages.push({ slug, html, frontmatter, toc })
+          } else {
+            const file = batch[results.indexOf(result)]
+            errors.push({ file, error: result.reason?.message ?? 'Compilation failed' })
+          }
         }
       }
 
       // Generate sidebar
       const sidebar = buildSidebar(docsDir)
 
-      // Write static HTML for each page
-      for (const page of pages) {
+      // Write static HTML for each page with prev/next navigation
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i]
+        const prevPage = i > 0
+          ? { title: (pages[i - 1].frontmatter.title as string) ?? pages[i - 1].slug, slug: pages[i - 1].slug }
+          : undefined
+        const nextPage = i < pages.length - 1
+          ? { title: (pages[i + 1].frontmatter.title as string) ?? pages[i + 1].slug, slug: pages[i + 1].slug }
+          : undefined
+
         const pageDir = join(outDir, page.slug === 'index' ? '' : page.slug)
         await mkdir(pageDir, { recursive: true })
 
@@ -66,10 +97,25 @@ export const buildCommand = new Command('build')
           toc: page.toc,
           sidebar,
           config,
+          prevPage,
+          nextPage,
+          currentSlug: page.slug,
         })
 
         const outPath = join(pageDir, 'index.html')
         await writeFile(outPath, fullHtml)
+      }
+
+      // Generate redirect pages from config
+      if (config.redirects?.length) {
+        for (const redirect of config.redirects) {
+          const redirectDir = join(outDir, redirect.from.replace(/^\//, ''))
+          await mkdir(redirectDir, { recursive: true })
+          await writeFile(
+            join(redirectDir, 'index.html'),
+            generateRedirectHtml(redirect.to),
+          )
+        }
       }
 
       // Copy public assets
@@ -92,6 +138,8 @@ export const buildCommand = new Command('build')
         console.log(JSON.stringify({
           success: errors.length === 0,
           pages: pages.length,
+          drafts: draftCount,
+          redirects: config.redirects?.length ?? 0,
           errors,
           durationMs,
           outDir,
@@ -103,7 +151,7 @@ export const buildCommand = new Command('build')
             console.log(`  ${chalk.red('✗')} ${e.file}: ${e.error}`)
           }
         } else {
-          spinner?.succeed(chalk.green(`Built ${pages.length} pages in ${durationMs}ms → ${options.out}/`))
+          spinner?.succeed(chalk.green(`Built ${pages.length} pages in ${durationMs}ms → ${options.out}/`) + (draftCount > 0 ? chalk.dim(` (${draftCount} draft(s) skipped)`) : ''))
         }
       }
     } catch (err) {

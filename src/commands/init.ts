@@ -3,12 +3,15 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import chalk from 'chalk'
 import ora from 'ora'
+import { generateCITemplate, generateDockerfile } from '../lib/ci-templates'
 
 export const initCommand = new Command('init')
   .description('Initialize a new Syntext documentation project')
   .argument('[directory]', 'Target directory', '.')
   .option('--name <name>', 'Project name')
   .option('--template <template>', 'Starter template', 'default')
+  .option('--ci <provider>', 'Generate CI config (github, gitlab, bitbucket)')
+  .option('--docker', 'Generate Dockerfile for self-hosted deployment')
   .action(async (directory, options) => {
     const spinner = ora('Creating Syntext project...').start()
     const targetDir = join(process.cwd(), directory)
@@ -43,6 +46,26 @@ export const initCommand = new Command('init')
         join(targetDir, 'docs.json'),
         generateDocsJson()
       )
+
+      // Generate CI configuration if requested
+      if (options.ci) {
+        const provider = options.ci as 'github' | 'gitlab' | 'bitbucket'
+        const ciTemplate = generateCITemplate({ provider, branch: 'main' })
+
+        if (provider === 'github') {
+          await mkdir(join(targetDir, '.github/workflows'), { recursive: true })
+          await writeFile(join(targetDir, '.github/workflows/syntext-deploy.yml'), ciTemplate)
+        } else if (provider === 'gitlab') {
+          await writeFile(join(targetDir, '.gitlab-ci.yml'), ciTemplate)
+        } else if (provider === 'bitbucket') {
+          await writeFile(join(targetDir, 'bitbucket-pipelines.yml'), ciTemplate)
+        }
+      }
+
+      // Generate Dockerfile if requested
+      if (options.docker) {
+        await writeFile(join(targetDir, 'Dockerfile'), generateDockerfile())
+      }
 
       spinner.succeed(chalk.green('Syntext project created!'))
       console.log('')

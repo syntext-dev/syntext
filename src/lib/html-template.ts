@@ -8,13 +8,45 @@ type StaticHtmlOptions = {
   toc: TocEntry[]
   sidebar: SidebarItem[]
   config: SyntextConfig
+  prevPage?: { title: string; slug: string }
+  nextPage?: { title: string; slug: string }
+  breadcrumbs?: Array<{ title: string; slug?: string }>
+  currentSlug?: string
+}
+
+export function isDraftPage(frontmatter: Record<string, unknown>): boolean {
+  return frontmatter.draft === true
+}
+
+export function generateRedirectHtml(target: string): string {
+  const escaped = target.replace(/"/g, '&quot;')
+  return `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${escaped}"><link rel="canonical" href="${escaped}"></head><body><a href="${escaped}">Moved</a></body></html>`
 }
 
 export function generateStaticHtml(options: StaticHtmlOptions): string {
-  const { content, frontmatter, toc, sidebar, config } = options
+  const { content, frontmatter, toc, sidebar, config, prevPage, nextPage, breadcrumbs, currentSlug } = options
   const title = (frontmatter.title as string) ?? 'Documentation'
   const description = (frontmatter.description as string) ?? ''
   const siteName = config.name ?? 'Docs'
+  const favicon = config.favicon ? `<link rel="icon" href="${config.favicon}">` : ''
+  const customCSSLinks = (config.customCSS || []).map((href) => `<link rel="stylesheet" href="${href}">`).join('\n  ')
+  const customJSScripts = (config.customJS || []).map((src) => `<script src="${src}" defer></script>`).join('\n  ')
+  const katexCSS = '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">'
+  const fontFamily = buildFontLink(config)
+
+  const bannerHtml = config.banner?.text
+    ? `<div class="stx-banner">${escapeHtml(config.banner.text)}${config.banner.link ? ` <a href="${escapeHtml(config.banner.link.href)}">${escapeHtml(config.banner.link.label)}</a>` : ''}${config.banner.dismissible ? '<button class="stx-banner-close" onclick="this.parentElement.remove()">×</button>' : ''}</div>`
+    : ''
+
+  const breadcrumbHtml = breadcrumbs?.length
+    ? `<nav class="stx-breadcrumbs">${breadcrumbs.map((b, i) => b.slug != null ? `<a href="/${b.slug}">${escapeHtml(b.title)}</a>${i < breadcrumbs.length - 1 ? '<span class="stx-bc-sep">/</span>' : ''}` : `<span>${escapeHtml(b.title)}</span>`).join('')}</nav>`
+    : ''
+
+  const prevNextHtml = (prevPage || nextPage)
+    ? `<nav class="stx-prev-next">${prevPage ? `<a class="stx-pn-link stx-pn-prev" href="/${prevPage.slug}"><span class="stx-pn-label">Previous</span><span class="stx-pn-title">${escapeHtml(prevPage.title)}</span></a>` : '<div></div>'}${nextPage ? `<a class="stx-pn-link stx-pn-next" href="/${nextPage.slug}"><span class="stx-pn-label">Next</span><span class="stx-pn-title">${escapeHtml(nextPage.title)}</span></a>` : '<div></div>'}</nav>`
+    : ''
+
+  const footerHtml = buildFooterHtml(config)
 
   return `<!DOCTYPE html>
 <html lang="en" data-theme="system">
@@ -23,14 +55,17 @@ export function generateStaticHtml(options: StaticHtmlOptions): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)} — ${escapeHtml(siteName)}</title>
   <meta name="description" content="${escapeHtml(description)}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  ${favicon}
+  ${katexCSS}
+  ${fontFamily}
+  ${customCSSLinks}
+  ${customJSScripts}
   <style>
 ${getThemeCSS(config)}
   </style>
 </head>
 <body>
+  ${bannerHtml}
   <header class="stx-header">
     <div class="stx-header-inner">
       <div class="stx-header-left">
@@ -58,11 +93,13 @@ ${getThemeCSS(config)}
     </aside>
     <main class="stx-content">
       <article class="stx-article">
+        ${breadcrumbHtml}
         <div class="stx-page-header">
           <h1>${escapeHtml(title)}</h1>
           ${description ? `<p class="stx-page-description">${escapeHtml(description)}</p>` : ''}
         </div>
         ${content}
+        ${prevNextHtml}
       </article>
     </main>
     <aside class="stx-toc">
@@ -75,20 +112,47 @@ ${getThemeCSS(config)}
   <script>
 ${getThemeJS()}
   </script>
+  ${footerHtml}
 </body>
 </html>`
+}
+
+function buildFontLink(config: SyntextConfig): string {
+  const heading = config.fonts?.heading || 'Inter'
+  const body = config.fonts?.body || 'Inter'
+  const mono = config.fonts?.mono || 'JetBrains Mono'
+  const families = [...new Set([heading, body, mono])].map(
+    (f) => `family=${encodeURIComponent(f)}:wght@400;500;600;700`
+  )
+  return `<link rel="preconnect" href="https://fonts.googleapis.com">\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n  <link href="https://fonts.googleapis.com/css2?${families.join('&')}&display=swap" rel="stylesheet">`
+}
+
+function buildFooterHtml(config: SyntextConfig): string {
+  if (!config.footer) return ''
+  const links = (config.footer.links || [])
+    .map((l) => `<a href="${escapeHtml(l.href)}">${escapeHtml(l.label)}</a>`)
+    .join('')
+  const socials = (config.footer.socials || [])
+    .map((s) => `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.platform)}</a>`)
+    .join('')
+  const copyright = config.footer.copyright ? `<span class="stx-footer-copy">${escapeHtml(config.footer.copyright)}</span>` : ''
+  return `<footer class="stx-footer"><div class="stx-footer-inner">${links}${socials}${copyright}</div></footer>`
 }
 
 function getThemeCSS(config: SyntextConfig): string {
   const primary = config.colors?.primary ?? '#6366f1'
   const accent = config.colors?.accent ?? '#8b5cf6'
+  const fontHeading = config.fonts?.heading || 'Inter'
+  const fontBody = config.fonts?.body || 'Inter'
+  const fontMono = config.fonts?.mono || 'JetBrains Mono'
 
   return `    :root {
       --stx-primary: ${primary};
       --stx-primary-light: ${primary}1a;
       --stx-accent: ${accent};
-      --stx-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --stx-font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --stx-font-sans: '${fontBody}', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --stx-font-heading: '${fontHeading}', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --stx-font-mono: '${fontMono}', 'Fira Code', 'Cascadia Code', monospace;
       --stx-bg: #ffffff;
       --stx-bg-subtle: #f8fafc;
       --stx-surface: #f1f5f9;
@@ -637,7 +701,66 @@ function getThemeCSS(config: SyntextConfig): string {
       .stx-content { padding: 1.5rem 1.25rem; }
       .stx-page-header h1 { font-size: 1.75rem; }
       .stx-card-group { grid-template-columns: 1fr !important; }
-    }`
+    }
+
+    /* Accordion */
+    .stx-accordion { border: 1px solid var(--stx-border); border-radius: var(--stx-radius); margin-bottom: 1rem; overflow: hidden; }
+    .stx-accordion-trigger { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0.875rem 1.25rem; background: var(--stx-bg-subtle); border: none; font-family: var(--stx-font-sans); font-size: 0.9375rem; font-weight: 600; color: var(--stx-text); cursor: pointer; transition: background 0.15s; text-align: left; }
+    .stx-accordion-trigger:hover { background: var(--stx-surface); }
+    .stx-accordion-trigger::after { content: ''; display: block; width: 8px; height: 8px; border-right: 2px solid var(--stx-text-dim); border-bottom: 2px solid var(--stx-text-dim); transform: rotate(45deg); transition: transform 0.2s; flex-shrink: 0; margin-left: 1rem; }
+    .stx-accordion[open] .stx-accordion-trigger::after { transform: rotate(-135deg); }
+    .stx-accordion-content { padding: 1rem 1.25rem; font-size: 0.875rem; color: var(--stx-text-secondary); }
+    .stx-accordion-content p:last-child { margin-bottom: 0; }
+
+    /* Frame */
+    .stx-frame { border: 1px solid var(--stx-border); border-radius: var(--stx-radius-lg); overflow: hidden; margin-bottom: 1.5rem; background: var(--stx-bg-subtle); }
+    .stx-frame img, .stx-frame video { display: block; width: 100%; border: none; margin: 0; border-radius: 0; }
+    .stx-frame-caption { padding: 0.625rem 1rem; font-size: 0.8125rem; color: var(--stx-text-dim); text-align: center; border-top: 1px solid var(--stx-border); }
+
+    /* Embed */
+    .stx-embed { margin-bottom: 1.5rem; }
+    .stx-embed-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: var(--stx-radius-lg); border: 1px solid var(--stx-border); }
+    .stx-embed-wrapper iframe, .stx-embed-wrapper video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+
+    /* Mermaid */
+    .stx-mermaid { margin-bottom: 1.5rem; text-align: center; }
+    .stx-mermaid pre.mermaid { background: none; border: none; padding: 0; }
+
+    /* Banner */
+    .stx-banner { background: var(--stx-primary); color: white; text-align: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; position: relative; }
+    .stx-banner a { color: white; text-decoration: underline; font-weight: 600; margin-left: 0.5rem; }
+    .stx-banner-close { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: white; font-size: 1.125rem; cursor: pointer; opacity: 0.7; }
+    .stx-banner-close:hover { opacity: 1; }
+
+    /* Breadcrumbs */
+    .stx-breadcrumbs { display: flex; align-items: center; gap: 0.25rem; margin-bottom: 1rem; font-size: 0.8125rem; }
+    .stx-breadcrumbs a { color: var(--stx-text-dim); text-decoration: none; }
+    .stx-breadcrumbs a:hover { color: var(--stx-primary); }
+    .stx-breadcrumbs span { color: var(--stx-text-dim); }
+    .stx-bc-sep { margin: 0 0.25rem; color: var(--stx-text-dim); }
+
+    /* Prev / Next */
+    .stx-prev-next { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--stx-border); }
+    .stx-pn-link { display: block; padding: 1rem 1.25rem; border: 1px solid var(--stx-border); border-radius: var(--stx-radius); text-decoration: none; transition: all 0.15s; }
+    .stx-pn-link:hover { border-color: var(--stx-primary); box-shadow: var(--stx-shadow-sm); }
+    .stx-pn-prev { text-align: left; }
+    .stx-pn-next { text-align: right; }
+    .stx-pn-label { display: block; font-size: 0.75rem; color: var(--stx-text-dim); margin-bottom: 0.25rem; }
+    .stx-pn-title { font-size: 0.9375rem; font-weight: 600; color: var(--stx-primary); }
+
+    /* Footer */
+    .stx-footer { border-top: 1px solid var(--stx-border); padding: 2rem 1.5rem; margin-top: 3rem; }
+    .stx-footer-inner { max-width: 1440px; margin: 0 auto; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; font-size: 0.8125rem; color: var(--stx-text-dim); }
+    .stx-footer a { color: var(--stx-text-secondary); text-decoration: none; }
+    .stx-footer a:hover { color: var(--stx-primary); }
+    .stx-footer-copy { margin-left: auto; }
+
+    /* Headings use heading font */
+    .stx-article h1, .stx-article h2, .stx-article h3, .stx-article h4 { font-family: var(--stx-font-heading); }
+
+    /* Shiki overrides */
+    .stx-article pre.shiki { background: var(--stx-surface) !important; }
+    [data-theme="dark"] .stx-article pre.shiki { background: #1e293b !important; }`
 }
 
 function getThemeJS(): string {

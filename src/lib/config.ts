@@ -9,16 +9,45 @@ export type SyntextConfig = {
     primary?: string
     accent?: string
   }
+  fonts?: {
+    heading?: string
+    body?: string
+    mono?: string
+  }
   navigation?: {
     tabs?: string[]
+    sidebar?: SidebarOverride[]
   }
   logo?: {
     light?: string
     dark?: string
   }
+  favicon?: string
   footer?: {
     links?: Array<{ label: string; href: string }>
+    copyright?: string
+    socials?: Array<{ platform: string; url: string }>
   }
+  banner?: {
+    text?: string
+    dismissible?: boolean
+    link?: { label: string; href: string }
+  }
+  customCSS?: string[]
+  customJS?: string[]
+  redirects?: Array<{ from: string; to: string; status?: number }>
+  i18n?: {
+    defaultLocale?: string
+    locales?: Array<{ code: string; label: string; dir?: 'ltr' | 'rtl' }>
+  }
+  versioning?: {
+    versions?: Array<{ label: string; branch?: string; tag?: string; default?: boolean }>
+  }
+}
+
+export type SidebarOverride = {
+  group: string
+  pages: Array<string | { title: string; slug: string; icon?: string }>
 }
 
 export async function loadConfig(rootDir: string): Promise<SyntextConfig> {
