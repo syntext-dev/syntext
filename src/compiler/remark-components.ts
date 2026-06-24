@@ -109,7 +109,7 @@ function renderTabs(node: MdxJsxFlowElement): string {
 
   // Collect Tab children
   const tabChildren = node.children.filter(
-    (c) => (c as any).type === 'mdxJsxFlowElement' && (c as any).name === 'Tab'
+    (c) => (c as any).type === 'mdxJsxFlowElement' && (c as any).name?.toLowerCase() === 'tab'
   ) as unknown as MdxJsxFlowElement[]
 
   // If no explicit items, use tab indices
@@ -161,7 +161,7 @@ function renderCodeGroup(node: MdxJsxFlowElement): string {
 
 function renderSteps(node: MdxJsxFlowElement): string {
   const stepChildren = node.children.filter(
-    (c) => (c as any).type === 'mdxJsxFlowElement' && (c as any).name === 'Step'
+    (c) => (c as any).type === 'mdxJsxFlowElement' && (c as any).name?.toLowerCase() === 'step'
   ) as unknown as MdxJsxFlowElement[]
 
   const steps = stepChildren
@@ -262,8 +262,6 @@ const componentRenderers: Record<string, (node: MdxJsxFlowElement) => string> = 
   Tabs: renderTabs,
   CodeGroup: renderCodeGroup,
   Steps: renderSteps,
-  Card: renderCard,
-  CardGroup: renderCardGroup,
   Accordion: renderAccordion,
   Frame: renderFrame,
   Embed: renderEmbed,
@@ -273,16 +271,53 @@ const componentRenderers: Record<string, (node: MdxJsxFlowElement) => string> = 
 import { protocolComponentRenderers } from './protocol-components'
 Object.assign(componentRenderers, protocolComponentRenderers)
 
+// Components that pass through as lowercase HTML elements (template handles at runtime)
+const passthroughComponents = new Set(['hero', 'card', 'cardgroup'])
+
+// Build case-insensitive lookup map for rendered components
+const rendererLookup = new Map<string, (node: MdxJsxFlowElement) => string>()
+for (const [key, fn] of Object.entries(componentRenderers)) {
+  rendererLookup.set(key.toLowerCase(), fn)
+}
+
 export const remarkComponents: Plugin<[], Root> = () => {
   return (tree: Root) => {
     visit(tree, 'mdxJsxFlowElement', (node: any, index, parent) => {
-      if (!node.name || !componentRenderers[node.name]) return
+      if (!node.name) return
       if (index === undefined || !parent) return
 
-      const renderer = componentRenderers[node.name]
-      const html = renderer(node as MdxJsxFlowElement)
+      const nameLower = node.name.toLowerCase()
 
-      // Replace the node with an HTML node
+      // Passthrough components: wrap children with HTML open/close tags
+      // so the pipeline renders children as markdown but preserves the custom element
+      if (passthroughComponents.has(nameLower)) {
+        const attrs = (node.attributes || [])
+          .filter((a: any) => a.type === 'mdxJsxAttribute')
+          .map((a: any) => {
+            const val = typeof a.value === 'string' ? a.value :
+              (a.value && typeof a.value === 'object' && 'value' in a.value) ? a.value.value : ''
+            return `${a.name}="${escapeHtml(val)}"`
+          })
+          .join(' ')
+        const tag = nameLower
+        const openTag = `<${tag}${attrs ? ' ' + attrs : ''}>`
+        const closeTag = `</${tag}>`
+
+        // Replace with: open tag HTML node, children, close tag HTML node
+        const newNodes: any[] = [
+          { type: 'html', value: openTag },
+          ...node.children,
+          { type: 'html', value: closeTag },
+        ]
+        ;(parent.children as any[]).splice(index, 1, ...newNodes)
+        return
+      }
+
+      // Rendered components: case-insensitive lookup
+      const renderer = rendererLookup.get(nameLower)
+      if (!renderer) return
+
+      const html = renderer(node as MdxJsxFlowElement)
       ;(parent.children as any[])[index] = {
         type: 'html',
         value: html,

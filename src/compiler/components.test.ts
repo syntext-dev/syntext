@@ -169,8 +169,8 @@ Some detailed content here.
 Learn how to set up Syntext in your project.
 </Card>`
       const result = await compileMdx(source)
-      expect(result.html).toContain('stx-card')
-      expect(result.html).toContain('Getting Started')
+      expect(result.html).toContain('<card')
+      expect(result.html).toContain('title="Getting Started"')
       expect(result.html).toContain('Learn how to set up Syntext in your project.')
       expect(result.html).toContain('href="/getting-started"')
     })
@@ -180,8 +180,8 @@ Learn how to set up Syntext in your project.
 Explore the full API.
 </Card>`
       const result = await compileMdx(source)
-      expect(result.html).toContain('stx-card')
-      expect(result.html).toContain('stx-card-icon')
+      expect(result.html).toContain('<card')
+      expect(result.html).toContain('icon="code"')
       expect(result.html).toContain('API Reference')
     })
 
@@ -190,8 +190,8 @@ Explore the full API.
 A feature description.
 </Card>`
       const result = await compileMdx(source)
-      expect(result.html).toContain('stx-card')
-      expect(result.html).toContain('Feature')
+      expect(result.html).toContain('<card')
+      expect(result.html).toContain('title="Feature"')
       expect(result.html).not.toContain('href')
     })
   })
@@ -207,7 +207,8 @@ Second card.
 </Card>
 </CardGroup>`
       const result = await compileMdx(source)
-      expect(result.html).toContain('stx-card-group')
+      expect(result.html).toContain('<cardgroup')
+      expect(result.html).toContain('cols="2"')
       expect(result.html).toContain('First')
       expect(result.html).toContain('Second')
     })
