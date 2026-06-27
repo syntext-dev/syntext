@@ -23,10 +23,10 @@ export const initCommand = new Command('init')
       await mkdir(join(targetDir, 'docs/api'), { recursive: true })
       await mkdir(join(targetDir, 'public'), { recursive: true })
 
-      // Create syntext.config.ts
+      // Create syntext.json
       const projectName = options.name ?? directory === '.' ? 'my-docs' : directory
       await writeFile(
-        join(targetDir, 'syntext.config.ts'),
+        join(targetDir, 'syntext.json'),
         generateConfig(projectName)
       )
 
@@ -85,23 +85,20 @@ export const initCommand = new Command('init')
   })
 
 function generateConfig(name: string): string {
-  return `import { defineConfig } from '@syntext/cli'
-
-export default defineConfig({
-  name: '${name}',
-  theme: 'default',
-  colors: {
-    primary: '#6366f1',
-    accent: '#8b5cf6',
-  },
-  navigation: {
-    tabs: ['Guides', 'API Reference'],
-  },
-  footer: {
-    links: [],
-  },
-})
-`
+  return JSON.stringify({
+    name,
+    theme: 'default',
+    colors: {
+      primary: '#6366f1',
+      accent: '#8b5cf6',
+    },
+    navigation: [
+      {
+        group: 'Getting Started',
+        pages: ['index', 'guides/getting-started'],
+      },
+    ],
+  }, null, 2) + '\n'
 }
 
 function generateIndexPage(name: string): string {

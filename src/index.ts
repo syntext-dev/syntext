@@ -7,6 +7,8 @@ import { deployCommand } from './commands/deploy'
 import { checkCommand } from './commands/check'
 import { generateCommand } from './commands/generate'
 import { migrateCommand } from './commands/migrate'
+import { loginCommand } from './commands/login'
+import { logoutCommand } from './commands/logout'
 
 const program = new Command()
 
@@ -22,5 +24,7 @@ program.addCommand(deployCommand)
 program.addCommand(checkCommand)
 program.addCommand(generateCommand)
 program.addCommand(migrateCommand)
+program.addCommand(loginCommand)
+program.addCommand(logoutCommand)
 
 program.parse()

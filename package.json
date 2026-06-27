@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts --compile --outfile dist/syntext",
+    "build": "bun build src/index.ts --compile --minify --outfile dist/syntext",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
