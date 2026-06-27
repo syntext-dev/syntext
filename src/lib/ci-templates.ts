@@ -32,13 +32,15 @@ on:
     branches: [${branch}]
     paths:
       - 'docs/**'
-      - 'syntext.config.*'
+      - 'syntext.json'
+      - 'syntext.yaml'
       - 'openapi.*'
   pull_request:
     branches: [${branch}]
     paths:
       - 'docs/**'
-      - 'syntext.config.*'
+      - 'syntext.json'
+      - 'syntext.yaml'
 
 jobs:
   deploy:
@@ -95,7 +97,8 @@ build-docs:
   only:
     changes:
       - docs/**/*
-      - syntext.config.*
+      - syntext.json
+      - syntext.yaml
       - openapi.*
 
 deploy-docs:
@@ -108,7 +111,8 @@ deploy-docs:
       - ${branch}
     changes:
       - docs/**/*
-      - syntext.config.*
+      - syntext.json
+      - syntext.yaml
   environment:
     name: production
     url: https://\$CI_PROJECT_NAME-docs.syntext.dev
@@ -193,7 +197,7 @@ WORKDIR /app
 RUN bun install -g syntext
 
 # Copy documentation source
-COPY syntext.config.* ./
+COPY syntext.json syntext.yaml* ./
 COPY docs/ ./docs/
 COPY public/ ./public/
 
@@ -232,7 +236,7 @@ services:
       - "3000:3000"
     volumes:
       - ./docs:/app/docs
-      - ./syntext.config.ts:/app/syntext.config.ts
+      - ./syntext.json:/app/syntext.json
     command: syntext dev --port 3000 --host 0.0.0.0
 `
 }

@@ -30,7 +30,7 @@ describe('loadConfig', () => {
       colors: { primary: '#ff0000' },
     }
     await writeFile(
-      join(tempDir, 'syntext.config.json'),
+      join(tempDir, 'syntext.json'),
       JSON.stringify(jsonConfig)
     )
 
@@ -40,21 +40,41 @@ describe('loadConfig', () => {
     expect(config.colors?.primary).toBe('#ff0000')
   })
 
-  it('should prefer .ts over .json config', async () => {
-    // TS config loaded via import() — for test purposes, skip this
-    // as dynamic import behavior varies. Test JSON fallback instead.
-    const jsonConfig = { name: 'JSON Config' }
-    await writeFile(
-      join(tempDir, 'syntext.config.json'),
-      JSON.stringify(jsonConfig)
-    )
+  it('should load YAML config file', async () => {
+    const yamlContent = `name: YAML Docs\ntheme: minimal\ncolors:\n  primary: "#00ff00"\n`
+    await writeFile(join(tempDir, 'syntext.yaml'), yamlContent)
 
     const config = await loadConfig(tempDir)
-    expect(config.name).toBe('JSON Config')
+    expect(config.name).toBe('YAML Docs')
+    expect(config.theme).toBe('minimal')
+    expect(config.colors?.primary).toBe('#00ff00')
+  })
+
+  it('should prefer syntext.json over syntext.yaml', async () => {
+    await writeFile(join(tempDir, 'syntext.json'), JSON.stringify({ name: 'JSON' }))
+    await writeFile(join(tempDir, 'syntext.yaml'), 'name: YAML\n')
+
+    const config = await loadConfig(tempDir)
+    expect(config.name).toBe('JSON')
+  })
+
+  it('should prefer syntext.json over legacy syntext.config.json', async () => {
+    await writeFile(join(tempDir, 'syntext.json'), JSON.stringify({ name: 'New' }))
+    await writeFile(join(tempDir, 'syntext.config.json'), JSON.stringify({ name: 'Legacy' }))
+
+    const config = await loadConfig(tempDir)
+    expect(config.name).toBe('New')
+  })
+
+  it('should fall back to legacy syntext.config.json', async () => {
+    await writeFile(join(tempDir, 'syntext.config.json'), JSON.stringify({ name: 'Legacy' }))
+
+    const config = await loadConfig(tempDir)
+    expect(config.name).toBe('Legacy')
   })
 
   it('should handle invalid JSON gracefully', async () => {
-    await writeFile(join(tempDir, 'syntext.config.json'), 'not valid json{{{')
+    await writeFile(join(tempDir, 'syntext.json'), 'not valid json{{{')
 
     // Should fall back to defaults since JSON parse fails
     const config = await loadConfig(tempDir)

@@ -31,7 +31,8 @@
     "remark-rehype": "^11.1.0",
     "shiki": "^3.2.0",
     "unified": "^11.0.0",
-    "unist-util-visit": "^5.1.0"
+    "unist-util-visit": "^5.1.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "bun-types": "latest",

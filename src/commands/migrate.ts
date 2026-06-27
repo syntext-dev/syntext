@@ -121,7 +121,7 @@ async function migrateMintlify(sourceDir: string, outputDir: string, dryRun?: bo
   // Generate syntext config
   if (Object.keys(mintConfig).length > 0 && !dryRun) {
     const syntextConfig = convertMintlifyConfig(mintConfig)
-    await writeFile(join(outputDir, '..', 'syntext.config.json'), JSON.stringify(syntextConfig, null, 2))
+    await writeFile(join(outputDir, '..', 'syntext.json'), JSON.stringify(syntextConfig, null, 2))
     result.configGenerated = true
   }
 

@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { readFile } from 'node:fs/promises'
+import { parse as parseYaml } from 'yaml'
 
 export type SyntextConfig = {
   name?: string
@@ -51,8 +52,10 @@ export type SidebarOverride = {
 }
 
 export async function loadConfig(rootDir: string): Promise<SyntextConfig> {
-  // Try loading syntext.config.ts
   const configPaths = [
+    join(rootDir, 'syntext.json'),
+    join(rootDir, 'syntext.yaml'),
+    join(rootDir, 'syntext.yml'),
     join(rootDir, 'syntext.config.ts'),
     join(rootDir, 'syntext.config.js'),
     join(rootDir, 'syntext.config.json'),
@@ -64,6 +67,10 @@ export async function loadConfig(rootDir: string): Promise<SyntextConfig> {
       if (await file.exists()) {
         if (configPath.endsWith('.json')) {
           return JSON.parse(await readFile(configPath, 'utf-8'))
+        }
+        if (configPath.endsWith('.yaml') || configPath.endsWith('.yml')) {
+          const content = await readFile(configPath, 'utf-8')
+          return parseYaml(content) as SyntextConfig
         }
         // For TS/JS configs, import them
         const mod = await import(configPath)

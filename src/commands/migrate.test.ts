@@ -65,7 +65,7 @@ Some answer here
       expect(converted).toContain('<summary>FAQ</summary>')
 
       // Check config was generated
-      const config = JSON.parse(await readFile(join(outDir, '..', 'syntext.config.json'), 'utf-8'))
+      const config = JSON.parse(await readFile(join(outDir, '..', 'syntext.json'), 'utf-8'))
       expect(config.name).toBe('My API')
       expect(config.theme.primaryColor).toBe('#0ea5e9')
 
@@ -169,7 +169,7 @@ Welcome to our docs.
       expect(converted).toContain('[https://example.com/video](https://example.com/video)')
 
       // Check navigation was parsed from SUMMARY.md
-      const config = JSON.parse(await readFile(join(outDir, '..', 'syntext.config.json'), 'utf-8'))
+      const config = JSON.parse(await readFile(join(outDir, '..', 'syntext.json'), 'utf-8'))
       expect(config.navigation).toHaveLength(2)
       expect(config.navigation[0].title).toBe('Getting Started')
       expect(config.navigation[1].title).toBe('API')
