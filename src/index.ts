@@ -13,7 +13,7 @@ import { logoutCommand } from './commands/logout'
 const program = new Command()
 
 program
-  .name('syntext')
+  .name('stx')
   .description('AI-powered documentation platform CLI')
   .version('0.1.0')
 

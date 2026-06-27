@@ -18,7 +18,7 @@ export const deployCommand = new Command('deploy')
       const credentials = await loadCredentials()
 
       if (!credentials?.token) {
-        throw new Error('Not authenticated. Run `syntext login` first.')
+        throw new Error('Not authenticated. Run `stx login` first.')
       }
 
       if (spinner) spinner.text = 'Building documentation...'

@@ -370,7 +370,7 @@ function convertGitbookPage(content: string, relativePath: string) {
     warnings.push(`${relativePath}: Contains {% api-method %} — manual conversion needed`)
   }
   if (converted.includes('{% swagger')) {
-    warnings.push(`${relativePath}: Contains {% swagger %} — use syntext generate for API docs`)
+    warnings.push(`${relativePath}: Contains {% swagger %} — use stx generate for API docs`)
   }
 
   const oldSlug = '/' + relativePath.replace(extname(relativePath), '')
@@ -473,7 +473,7 @@ function convertReadmePage(content: string, relativePath: string) {
 
   // Convert ReadMe API blocks
   if (converted.includes('[block:api-header]')) {
-    warnings.push(`${relativePath}: Contains [block:api-header] — use syntext generate for API docs`)
+    warnings.push(`${relativePath}: Contains [block:api-header] — use stx generate for API docs`)
     converted = converted.replace(/\[block:api-header\][\s\S]*?\[\/block\]/g, '')
   }
 

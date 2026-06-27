@@ -81,7 +81,7 @@ title: Quick Start
 Run the install command.
 </Step>
 <Step title="Initialize">
-Run syntext init in your project.
+Run stx init in your project.
 </Step>
 </Steps>`)
 

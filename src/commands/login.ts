@@ -45,22 +45,23 @@ export const loginCommand = new Command('login')
         console.log(chalk.dim('  Device auth not available. Use token-based login:\n'))
         console.log(`  1. Go to ${chalk.cyan('https://syntext.dev/settings/tokens')}`)
         console.log(`  2. Create a new CLI token`)
-        console.log(`  3. Run: ${chalk.bold('syntext login --token <your-token>')}\n`)
+        console.log(`  3. Run: ${chalk.bold('stx login --token <your-token>')}\n`)
         return
       }
 
       const { data } = await res.json() as { data: { deviceCode: string; userCode: string; verificationUrl: string; expiresIn: number; interval: number } }
 
       spinner.stop()
-      console.log(`  Your code: ${chalk.bold.cyan(data.userCode)}\n`)
-      console.log(`  Open this URL to authenticate:`)
-      console.log(`  ${chalk.underline(data.verificationUrl)}\n`)
+      const approveUrl = `${data.verificationUrl}?code=${data.userCode}`
+      console.log(`  Opening browser to complete login...\n`)
+      console.log(`  If the browser doesn't open, visit:`)
+      console.log(`  ${chalk.underline(approveUrl)}\n`)
 
       // Try to open browser
       try {
         const { exec } = await import('node:child_process')
         const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open'
-        exec(`${cmd} "${data.verificationUrl}"`)
+        exec(`${cmd} "${approveUrl}"`)
       } catch {
         // Silent fail — user can open manually
       }

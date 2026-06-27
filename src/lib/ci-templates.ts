@@ -1,6 +1,6 @@
 /**
  * CI/CD template generators for syntext documentation projects.
- * Used by `syntext init` to scaffold CI configuration.
+ * Used by `stx init` to scaffold CI configuration.
  */
 
 export type CITemplateOptions = {
@@ -54,20 +54,20 @@ jobs:
           bun-version: latest
 
       - name: Install Syntext CLI
-        run: bun install -g syntext
+        run: bun install -g @syntext/cli
 
       - name: Build documentation
-        run: syntext build
+        run: stx build
 
       - name: Deploy to Syntext
         if: github.event_name == 'push'
-        run: syntext deploy --token \${{ secrets.SYNTEXT_TOKEN }}
+        run: stx deploy --token \${{ secrets.SYNTEXT_TOKEN }}
         env:
           SYNTEXT_PROJECT_ID: \${{ vars.SYNTEXT_PROJECT_ID }}
 
       - name: Deploy preview
         if: github.event_name == 'pull_request'
-        run: syntext deploy --preview --branch \${{ github.head_ref }} --token \${{ secrets.SYNTEXT_TOKEN }}
+        run: stx deploy --preview --branch \${{ github.head_ref }} --token \${{ secrets.SYNTEXT_TOKEN }}
         env:
           SYNTEXT_PROJECT_ID: \${{ vars.SYNTEXT_PROJECT_ID }}
 `
@@ -89,8 +89,8 @@ variables:
 build-docs:
   stage: build
   script:
-    - bun install -g syntext
-    - syntext build
+    - bun install -g @syntext/cli
+    - stx build
   artifacts:
     paths:
       - dist/
@@ -104,8 +104,8 @@ build-docs:
 deploy-docs:
   stage: deploy
   script:
-    - bun install -g syntext
-    - syntext deploy --token \$SYNTEXT_TOKEN
+    - bun install -g @syntext/cli
+    - stx deploy --token \$SYNTEXT_TOKEN
   only:
     refs:
       - ${branch}
@@ -120,8 +120,8 @@ deploy-docs:
 deploy-preview:
   stage: deploy
   script:
-    - bun install -g syntext
-    - syntext deploy --preview --branch \$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME --token \$SYNTEXT_TOKEN
+    - bun install -g @syntext/cli
+    - stx deploy --preview --branch \$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME --token \$SYNTEXT_TOKEN
   only:
     - merge_requests
   environment:
@@ -156,9 +156,9 @@ pipelines:
           caches:
             - node
           script:
-            - bun install -g syntext
-            - syntext build
-            - syntext deploy --token $SYNTEXT_TOKEN
+            - bun install -g @syntext/cli
+            - stx build
+            - stx deploy --token $SYNTEXT_TOKEN
           artifacts:
             - dist/**
 
@@ -169,9 +169,9 @@ pipelines:
           caches:
             - node
           script:
-            - bun install -g syntext
-            - syntext build
-            - syntext deploy --preview --branch $BITBUCKET_BRANCH --token $SYNTEXT_TOKEN
+            - bun install -g @syntext/cli
+            - stx build
+            - stx deploy --preview --branch $BITBUCKET_BRANCH --token $SYNTEXT_TOKEN
 `
 }
 
@@ -187,14 +187,14 @@ export function generateDockerfile(): string {
 #   docker run -p 3000:3000 my-docs
 #
 # Or with Syntext CLI for deploy:
-#   docker run --rm -e SYNTEXT_TOKEN=xxx my-docs syntext deploy
+#   docker run --rm -e SYNTEXT_TOKEN=xxx my-docs stx deploy
 
 FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
 # Install Syntext CLI
-RUN bun install -g syntext
+RUN bun install -g @syntext/cli
 
 # Copy documentation source
 COPY syntext.json syntext.yaml* ./
@@ -202,7 +202,7 @@ COPY docs/ ./docs/
 COPY public/ ./public/
 
 # Build static site
-RUN syntext build
+RUN stx build
 
 # Production: serve with a lightweight static server
 FROM oven/bun:1-slim AS runner
@@ -237,6 +237,6 @@ services:
     volumes:
       - ./docs:/app/docs
       - ./syntext.json:/app/syntext.json
-    command: syntext dev --port 3000 --host 0.0.0.0
+    command: stx dev --port 3000 --host 0.0.0.0
 `
 }

@@ -15,13 +15,13 @@ jobs:
         include:
           - os: macos-latest
             target: bun-darwin-arm64
-            artifact: syntext-darwin-arm64
+            artifact: stx-darwin-arm64
           - os: macos-13
             target: bun-darwin-x64
-            artifact: syntext-darwin-x64
+            artifact: stx-darwin-x64
           - os: ubuntu-latest
             target: bun-linux-x64
-            artifact: syntext-linux-x64
+            artifact: stx-linux-x64
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -96,51 +96,63 @@ jobs:
             const checksumAsset = release.data.assets.find(a => a.name === 'checksums.txt')
             if (!checksumAsset) return
 
-            const checksumContent = await github.request(checksumAsset.browser_download_url)
-            const checksums = checksumContent.data.toString()
+            const checksumRes = await fetch(checksumAsset.browser_download_url)
+            const checksums = await checksumRes.text()
 
             const getSha = (name) => {
               const line = checksums.split('\n').find(l => l.includes(name))
-              return line ? line.split(' ')[0] : ''
+              return line ? line.split(/\s+/)[0] : ''
             }
 
-            const formula = `class Syntext < Formula
-              desc "AI-powered developer documentation CLI"
-              homepage "https://syntext.dev"
-              version "${version}"
-              license "MIT"
+            const formula = `class Stx < Formula
+  desc "AI-powered developer documentation CLI"
+  homepage "https://syntext.dev"
+  version "${version}"
+  license "MIT"
 
-              on_macos do
-                if Hardware::CPU.arm?
-                  url "https://github.com/syntext-dev/syntext/releases/download/${tag}/syntext-darwin-arm64.tar.gz"
-                  sha256 "${getSha('darwin-arm64')}"
-                else
-                  url "https://github.com/syntext-dev/syntext/releases/download/${tag}/syntext-darwin-x64.tar.gz"
-                  sha256 "${getSha('darwin-x64')}"
-                end
-              end
+  on_macos do
+    if Hardware::CPU.arm?
+      url "https://github.com/syntext-dev/syntext/releases/download/${tag}/stx-darwin-arm64.tar.gz"
+      sha256 "${getSha('stx-darwin-arm64')}"
+    else
+      url "https://github.com/syntext-dev/syntext/releases/download/${tag}/stx-darwin-x64.tar.gz"
+      sha256 "${getSha('stx-darwin-x64')}"
+    end
+  end
 
-              on_linux do
-                url "https://github.com/syntext-dev/syntext/releases/download/${tag}/syntext-linux-x64.tar.gz"
-                sha256 "${getSha('linux-x64')}"
-              end
+  on_linux do
+    url "https://github.com/syntext-dev/syntext/releases/download/${tag}/stx-linux-x64.tar.gz"
+    sha256 "${getSha('stx-linux-x64')}"
+  end
 
-              def install
-                bin.install Dir["syntext-*"].first => "syntext"
-              end
+  def install
+    bin.install Dir["stx-*"].first => "stx"
+  end
 
-              test do
-                assert_match "syntext", shell_output("#{bin}/syntext --version")
-              end
-            end
-            `
+  test do
+    assert_match "${version}", shell_output("\#{bin}/stx --version")
+  end
+end
+`
 
-            // Create or update the formula file in homebrew-tap repo
+            // Get existing file SHA
+            let sha
+            try {
+              const existing = await github.rest.repos.getContent({
+                owner: 'syntext-dev',
+                repo: 'homebrew-tap',
+                path: 'Formula/stx.rb',
+              })
+              sha = existing.data.sha
+            } catch {}
+
             await github.rest.repos.createOrUpdateFileContents({
               owner: 'syntext-dev',
               repo: 'homebrew-tap',
-              path: 'Formula/syntext.rb',
-              message: `Update syntext to ${version}`,
+              path: 'Formula/stx.rb',
+              message: `Update stx to ${version}`,
               content: Buffer.from(formula).toString('base64'),
+              sha,
               committer: { name: 'github-actions', email: 'actions@github.com' },
             })
+

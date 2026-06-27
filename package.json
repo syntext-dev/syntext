@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "bin": {
-    "syntext": "./dist/index.js"
+    "stx": "./dist/index.js"
   },
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts --compile --minify --outfile dist/syntext",
+    "build": "bun build src/index.ts --compile --minify --outfile dist/stx",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
