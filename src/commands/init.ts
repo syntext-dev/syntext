@@ -4,12 +4,14 @@ import { join } from 'node:path'
 import chalk from 'chalk'
 import ora from 'ora'
 import { generateCITemplate, generateDockerfile } from '../lib/ci-templates'
+import { loadCredentials } from '../lib/credentials'
 
 export const initCommand = new Command('init')
   .description('Initialize a new Syntext documentation project')
   .argument('[directory]', 'Target directory', '.')
   .option('--name <name>', 'Project name')
   .option('--template <template>', 'Starter template', 'default')
+  .option('--create', 'Also create the project on Syntext (requires login)')
   .option('--ci <provider>', 'Generate CI config (github, gitlab, bitbucket)')
   .option('--docker', 'Generate Dockerfile for self-hosted deployment')
   .action(async (directory, options) => {
@@ -70,12 +72,46 @@ export const initCommand = new Command('init')
       // Add .syntext/ to .gitignore
       await appendGitignore(targetDir)
 
-      spinner.succeed(chalk.green('Syntext project created!'))
+      // If --create flag, create project on backend and connect
+      if (options.create) {
+        const creds = await loadCredentials()
+        if (!creds?.token) {
+          spinner.succeed(chalk.green('Syntext project scaffolded!'))
+          console.log('')
+          console.log(`  ${chalk.yellow('Not logged in — skipping remote project creation.')}`)
+          console.log(`  ${chalk.dim('Run')} stx login ${chalk.dim('then')} stx projects create ${projectName}`)
+        } else {
+          spinner.text = 'Creating project on Syntext...'
+          const projectId = await createRemoteProject(projectName, creds.token)
+          if (projectId) {
+            const configPath = join(targetDir, 'syntext.json')
+            const config = JSON.parse(await readFile(configPath, 'utf-8'))
+            config.projectId = projectId
+            await writeFile(configPath, JSON.stringify(config, null, 2) + '\n')
+            spinner.succeed(chalk.green('Project created and connected!'))
+            console.log('')
+            console.log(`  ${chalk.dim('Project ID:')} ${projectId}`)
+          } else {
+            spinner.succeed(chalk.green('Syntext project scaffolded!'))
+            console.log('')
+            console.log(`  ${chalk.yellow('Could not create remote project (plan limit?). Create manually:')}`)
+            console.log(`    stx projects create ${projectName}`)
+          }
+        }
+      } else {
+        spinner.succeed(chalk.green('Syntext project scaffolded!'))
+      }
+
       console.log('')
       console.log(`  ${chalk.bold('Next steps:')}`)
       console.log('')
       if (directory !== '.') {
         console.log(`    cd ${directory}`)
+      }
+      if (!options.create) {
+        console.log(`    stx login`)
+        console.log(`    stx projects create ${projectName}`)
+        console.log(`    stx connect <projectId>`)
       }
       console.log(`    stx dev`)
       console.log('')
@@ -217,5 +253,27 @@ async function appendGitignore(targetDir: string): Promise<void> {
   } catch {
     // .gitignore doesn't exist yet
     await writeFile(gitignorePath, `# Syntext build output\n${entry}\n`)
+  }
+}
+
+async function createRemoteProject(name: string, token: string): Promise<string | null> {
+  const apiUrl = process.env.SYNTEXT_API_URL ?? 'https://api.syntext.dev'
+
+  try {
+    const res = await fetch(`${apiUrl}/v1/projects`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name }),
+    })
+
+    if (!res.ok) return null
+
+    const { data } = await res.json() as { data: { id: string } }
+    return data.id
+  } catch {
+    return null
   }
 }

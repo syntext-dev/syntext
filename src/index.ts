@@ -3,6 +3,8 @@ import { Command } from 'commander'
 import { initCommand } from './commands/init'
 import { devCommand } from './commands/dev'
 import { deployCommand } from './commands/deploy'
+import { connectCommand } from './commands/connect'
+import { projectsCommand } from './commands/projects'
 import { checkCommand } from './commands/check'
 import { generateCommand } from './commands/generate'
 import { migrateCommand } from './commands/migrate'
@@ -19,6 +21,8 @@ program
 program.addCommand(initCommand)
 program.addCommand(devCommand)
 program.addCommand(deployCommand)
+program.addCommand(connectCommand)
+program.addCommand(projectsCommand)
 program.addCommand(checkCommand)
 program.addCommand(generateCommand)
 program.addCommand(migrateCommand)
