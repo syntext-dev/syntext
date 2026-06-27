@@ -112,15 +112,20 @@ description: Get started with ${name} documentation
 
 # Welcome to ${name}
 
-This is your documentation home page. Edit this file at \`docs/index.mdx\`.
+Your documentation is ready. Start writing guides, tutorials, and API references — everything stays in sync with your codebase.
 
-<Card title="Getting Started" href="/guides/getting-started">
-  Learn how to set up and configure your project.
-</Card>
+## Quick Links
 
-<Card title="API Reference" href="/api">
-  Explore the complete API documentation.
-</Card>
+- [Getting Started](/guides/getting-started) — Set up and configure your project
+- [API Reference](/api) — Auto-generated from your source code
+
+## What's Next
+
+1. **Write documentation** — Add \`.mdx\` files to \`docs/\`
+2. **Generate API docs** — Run \`stx generate --src .\` to parse code annotations
+3. **Deploy** — Run \`stx deploy\` to publish to your live site
+
+> Edit this page at \`docs/index.mdx\`. Changes appear instantly in dev mode.
 `
 }
 
@@ -132,41 +137,42 @@ description: Learn how to get started with ${name}
 
 # Getting Started
 
-Welcome to the ${name} getting started guide.
+Welcome to ${name}. This guide walks you through setup and first use.
 
 ## Installation
 
-<CodeGroup>
-\`\`\`bash npm
+\`\`\`bash
+# Install via npm
 npm install ${name}
-\`\`\`
 
-\`\`\`bash yarn
-yarn add ${name}
-\`\`\`
-
-\`\`\`bash bun
+# Or with bun
 bun add ${name}
 \`\`\`
-</CodeGroup>
 
 ## Quick Start
 
-<Steps>
-  <Step title="Install the package">
-    Run the installation command above for your package manager.
-  </Step>
-  <Step title="Configure your project">
-    Create a configuration file in your project root.
-  </Step>
-  <Step title="Start building">
-    You're ready to go! Check the API reference for details.
-  </Step>
-</Steps>
+### 1. Install the package
 
-<Callout type="info">
-  Need help? Check our [FAQ](/guides/faq) or reach out on Discord.
-</Callout>
+Run the installation command above for your package manager.
+
+### 2. Configure your project
+
+Create a configuration file in your project root:
+
+\`\`\`json
+{
+  "name": "${name}",
+  "version": "1.0.0"
+}
+\`\`\`
+
+### 3. Start building
+
+You're ready to go! Check the [API Reference](/api) for detailed documentation.
+
+---
+
+> **Need help?** Open an issue on GitHub or check the FAQ.
 `
 }
 

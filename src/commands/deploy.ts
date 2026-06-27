@@ -6,12 +6,13 @@ import { loadConfig } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
 
 export const deployCommand = new Command('deploy')
-  .description('Build and deploy documentation to Syntext')
+  .description('Deploy documentation to Syntext (server-side compilation)')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
   .option('--preview', 'Deploy as a preview (non-production)')
   .option('--branch <branch>', 'Branch name for preview deploys')
   .option('--token <token>', 'Auth token (for CI, overrides login)')
   .option('--json', 'Output result as JSON')
+  .option('--promote [buildId]', 'Promote a preview deployment to production')
   .action(async (options) => {
     const rootDir = join(process.cwd(), options.dir)
     const spinner = options.json ? null : ora('Preparing deployment...').start()
@@ -29,44 +30,109 @@ export const deployCommand = new Command('deploy')
         throw new Error('No projectId in syntext.json. Run `stx init` and connect to a project.')
       }
 
-      // Step 1: Build to .syntext/
-      if (spinner) spinner.text = 'Building documentation...'
-      const outDir = join(rootDir, '.syntext')
-      const { execSync } = await import('node:child_process')
-      execSync(`stx build --dir ${options.dir} --out .syntext`, {
-        stdio: 'pipe',
-        cwd: process.cwd(),
-      })
-
-      // Step 2: Collect all built files
-      if (spinner) spinner.text = 'Collecting assets...'
-      const files: Array<{ path: string; content: Buffer }> = []
-      const glob = new Bun.Glob('**/*')
-      for await (const file of glob.scan({ cwd: outDir })) {
-        const filePath = join(outDir, file)
-        const content = await Bun.file(filePath).arrayBuffer()
-        files.push({ path: file, content: Buffer.from(content) })
-      }
-
-      if (files.length === 0) {
-        throw new Error('Build produced no output files. Check your docs/ directory.')
-      }
-
-      // Step 3: Create a deployment via API
-      if (spinner) spinner.text = `Uploading ${files.length} files...`
       const apiUrl = process.env.SYNTEXT_API_URL ?? 'https://api.syntext.dev'
 
-      // Create a multipart form with all files
-      const formData = new FormData()
-      formData.append('metadata', JSON.stringify({
-        projectId,
-        preview: options.preview ?? false,
-        branch: options.branch,
-        fileCount: files.length,
-      }))
+      // Handle --promote flow
+      if (options.promote !== undefined) {
+        if (spinner) spinner.text = 'Promoting to production...'
 
-      for (const file of files) {
+        const promoteBody: Record<string, string> = {}
+        if (typeof options.promote === 'string') {
+          promoteBody.buildId = options.promote
+        }
+
+        const res = await fetch(`${apiUrl}/v1/projects/${projectId}/deploy/promote`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(promoteBody),
+        })
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))
+          throw new Error(err.error?.message ?? `Promote failed (${res.status})`)
+        }
+
+        const { data } = await res.json() as { data: { buildId: string; message: string } }
+
+        if (options.json) {
+          console.log(JSON.stringify({ success: true, ...data }))
+        } else {
+          spinner?.succeed(chalk.green('Promotion started!'))
+          console.log(`\n  ${chalk.dim('Build ID:')} ${data.buildId}`)
+          console.log(`  ${chalk.dim('Status:')}   ${data.message}\n`)
+        }
+        return
+      }
+
+      // Collect source files (docs/, public/, syntext.json, docs.json)
+      if (spinner) spinner.text = 'Collecting source files...'
+
+      const sourceFiles: Array<{ path: string; content: Buffer }> = []
+
+      // Include syntext.json
+      const configPath = join(rootDir, 'syntext.json')
+      const configFile = Bun.file(configPath)
+      if (await configFile.exists()) {
+        sourceFiles.push({ path: 'syntext.json', content: Buffer.from(await configFile.arrayBuffer()) })
+      }
+
+      // Include docs.json if present
+      const docsJsonPath = join(rootDir, 'docs.json')
+      const docsJsonFile = Bun.file(docsJsonPath)
+      if (await docsJsonFile.exists()) {
+        sourceFiles.push({ path: 'docs.json', content: Buffer.from(await docsJsonFile.arrayBuffer()) })
+      }
+
+      // Include all docs/ files
+      const docsDir = join(rootDir, 'docs')
+      const docsGlob = new Bun.Glob('**/*')
+      for await (const file of docsGlob.scan({ cwd: docsDir })) {
+        const filePath = join(docsDir, file)
+        const content = await Bun.file(filePath).arrayBuffer()
+        sourceFiles.push({ path: `docs/${file}`, content: Buffer.from(content) })
+      }
+
+      // Include all public/ files (assets)
+      const publicDir = join(rootDir, 'public')
+      const publicGlob = new Bun.Glob('**/*')
+      try {
+        for await (const file of publicGlob.scan({ cwd: publicDir })) {
+          const filePath = join(publicDir, file)
+          const content = await Bun.file(filePath).arrayBuffer()
+          sourceFiles.push({ path: `public/${file}`, content: Buffer.from(content) })
+        }
+      } catch {
+        // public/ dir doesn't exist — that's fine
+      }
+
+      // Include openapi.json/yaml if present
+      for (const specName of ['openapi.json', 'openapi.yaml', 'openapi.yml']) {
+        const specPath = join(rootDir, specName)
+        const specFile = Bun.file(specPath)
+        if (await specFile.exists()) {
+          sourceFiles.push({ path: specName, content: Buffer.from(await specFile.arrayBuffer()) })
+        }
+      }
+
+      if (sourceFiles.length === 0) {
+        throw new Error('No source files found. Make sure you have a docs/ directory.')
+      }
+
+      // Upload source files to API for server-side compilation
+      if (spinner) spinner.text = `Uploading ${sourceFiles.length} source files...`
+
+      const formData = new FormData()
+      formData.append('preview', options.preview ? 'true' : 'false')
+      if (options.branch) {
+        formData.append('branch', options.branch)
+      }
+
+      for (const file of sourceFiles) {
         formData.append('files', new Blob([file.content]), file.path)
+        formData.append('paths', file.path)
       }
 
       const res = await fetch(`${apiUrl}/v1/projects/${projectId}/deploy`, {
@@ -82,20 +148,39 @@ export const deployCommand = new Command('deploy')
         throw new Error(err.error?.message ?? `Deploy failed (${res.status})`)
       }
 
-      const { data: deployment } = await res.json() as { data: { id: string; url: string; status: string } }
+      const { data } = await res.json() as {
+        data: { buildId: string; status: string; branch: string; isPreview: boolean; fileCount: number; logsUrl: string }
+      }
 
-      if (options.json) {
-        console.log(JSON.stringify({
-          success: true,
-          deploymentId: deployment.id,
-          url: deployment.url,
-          files: files.length,
-          preview: options.preview ?? false,
-        }))
+      // Stream build logs until completion
+      if (spinner) spinner.text = 'Building on server...'
+
+      const buildResult = await waitForBuild(apiUrl, token, projectId, data.buildId, spinner)
+
+      if (buildResult.status === 'deployed') {
+        if (options.json) {
+          console.log(JSON.stringify({
+            success: true,
+            buildId: data.buildId,
+            url: buildResult.deployUrl,
+            files: data.fileCount,
+            preview: data.isPreview,
+            duration: buildResult.durationMs,
+          }))
+        } else {
+          spinner?.succeed(chalk.green('Deployed successfully!'))
+          console.log('')
+          console.log(`  ${chalk.dim('Build:')}    ${data.buildId.slice(0, 8)}`)
+          console.log(`  ${chalk.dim('URL:')}      ${chalk.cyan(buildResult.deployUrl)}`)
+          console.log(`  ${chalk.dim('Pages:')}    ${buildResult.pageCount}`)
+          console.log(`  ${chalk.dim('Duration:')} ${buildResult.durationMs}ms`)
+          if (data.isPreview) {
+            console.log(`\n  ${chalk.dim('This is a preview deploy. Run')} stx deploy --promote ${chalk.dim('to go live.')}`)
+          }
+          console.log('')
+        }
       } else {
-        spinner?.succeed(chalk.green(`Deployed ${files.length} files successfully!`))
-        console.log(`\n  ${chalk.dim('Deployment:')} ${deployment.id}`)
-        console.log(`  ${chalk.dim('URL:')}        ${chalk.cyan(deployment.url)}\n`)
+        throw new Error(buildResult.error || 'Build failed on server')
       }
     } catch (err) {
       if (options.json) {
@@ -107,3 +192,59 @@ export const deployCommand = new Command('deploy')
       process.exit(1)
     }
   })
+
+async function waitForBuild(
+  apiUrl: string,
+  token: string,
+  projectId: string,
+  buildId: string,
+  spinner: ReturnType<typeof ora> | null,
+): Promise<{ status: string; deployUrl?: string; pageCount?: number; durationMs?: number; error?: string }> {
+  const maxWait = 120_000 // 2 minutes
+  const pollInterval = 2_000
+  const start = Date.now()
+
+  while (Date.now() - start < maxWait) {
+    const res = await fetch(`${apiUrl}/v1/projects/${projectId}/builds/${buildId}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+
+    if (!res.ok) {
+      await Bun.sleep(pollInterval)
+      continue
+    }
+
+    const { data: build } = await res.json() as {
+      data: { status: string; deployUrl: string | null; pageCount: number | null; durationMs: number | null; error: string | null }
+    }
+
+    if (spinner) {
+      const statusMap: Record<string, string> = {
+        queued: 'Queued...',
+        uploading: 'Uploading...',
+        cloning: 'Preparing source...',
+        parsing: 'Parsing documentation...',
+        compiling: 'Compiling pages...',
+        deploying: 'Deploying to CDN...',
+      }
+      spinner.text = statusMap[build.status] || `Status: ${build.status}`
+    }
+
+    if (build.status === 'deployed') {
+      return {
+        status: 'deployed',
+        deployUrl: build.deployUrl || undefined,
+        pageCount: build.pageCount || undefined,
+        durationMs: build.durationMs || undefined,
+      }
+    }
+
+    if (build.status === 'failed') {
+      return { status: 'failed', error: build.error || 'Build failed' }
+    }
+
+    await Bun.sleep(pollInterval)
+  }
+
+  return { status: 'failed', error: 'Build timed out after 2 minutes' }
+}
