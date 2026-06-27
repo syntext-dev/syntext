@@ -26,15 +26,20 @@ export const generateCommand = new Command('generate')
       // Collect source files
       const srcDirs: string[] = options.src
       const files: string[] = []
-      const extensions = ['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'php']
+      const extensions = ['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'kt', 'kts', 'php', 'cs']
+
+      // Load .gitignore patterns for filtering
+      const ignorePatterns = await loadIgnorePatterns(rootDir)
 
       for (const srcDir of srcDirs) {
         const fullSrcDir = join(rootDir, srcDir)
         for (const ext of extensions) {
           const glob = new Bun.Glob(`**/*.${ext}`)
           for await (const file of glob.scan({ cwd: fullSrcDir })) {
-            // Skip test files and node_modules
+            // Skip test files, node_modules, and gitignored paths
             if (file.includes('.test.') || file.includes('.spec.') || file.includes('node_modules')) continue
+            if (file.includes('__tests__') || file.includes('__mocks__')) continue
+            if (isIgnored(file, ignorePatterns)) continue
             files.push(join(fullSrcDir, file))
           }
         }
@@ -130,3 +135,27 @@ export const generateCommand = new Command('generate')
       process.exit(1)
     }
   })
+
+async function loadIgnorePatterns(rootDir: string): Promise<string[]> {
+  const patterns: string[] = []
+  try {
+    const gitignore = await readFile(join(rootDir, '.gitignore'), 'utf-8')
+    for (const line of gitignore.split('\n')) {
+      const trimmed = line.trim()
+      if (trimmed && !trimmed.startsWith('#')) {
+        patterns.push(trimmed)
+      }
+    }
+  } catch {
+    // no .gitignore
+  }
+  return patterns
+}
+
+function isIgnored(filePath: string, patterns: string[]): boolean {
+  for (const pattern of patterns) {
+    const clean = pattern.replace(/^\//, '').replace(/\/$/, '')
+    if (filePath.includes(clean)) return true
+  }
+  return false
+}

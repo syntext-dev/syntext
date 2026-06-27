@@ -239,7 +239,7 @@ async function migrateDocusaurus(sourceDir: string, outputDir: string, dryRun?: 
         navigation: [],
         theme: { primaryColor: '#3b82f6' },
       }
-      await writeFile(join(outputDir, '..', 'syntext.config.json'), JSON.stringify(syntextConfig, null, 2))
+      await writeFile(join(outputDir, '..', 'syntext.json'), JSON.stringify(syntextConfig, null, 2))
       result.configGenerated = true
     }
   } catch {
@@ -327,7 +327,7 @@ async function migrateGitbook(sourceDir: string, outputDir: string, dryRun?: boo
       navigation,
       theme: { primaryColor: '#3b82f6' },
     }
-    await writeFile(join(outputDir, '..', 'syntext.config.json'), JSON.stringify(syntextConfig, null, 2))
+    await writeFile(join(outputDir, '..', 'syntext.json'), JSON.stringify(syntextConfig, null, 2))
     result.configGenerated = true
   }
 
@@ -440,7 +440,7 @@ async function migrateReadme(sourceDir: string, outputDir: string, dryRun?: bool
       navigation: [],
       theme: { primaryColor: '#3b82f6' },
     }
-    await writeFile(join(outputDir, '..', 'syntext.config.json'), JSON.stringify(syntextConfig, null, 2))
+    await writeFile(join(outputDir, '..', 'syntext.json'), JSON.stringify(syntextConfig, null, 2))
     result.configGenerated = true
   }
 
