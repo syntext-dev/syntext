@@ -79,7 +79,8 @@ export const initCommand = new Command('init')
       }
       console.log(`    stx dev`)
       console.log('')
-      console.log(`  ${chalk.dim('This will start a local dev server with hot-reload.')}`)
+      console.log(`  ${chalk.dim('This will deploy a preview and watch for changes.')}`)
+      console.log(`  ${chalk.dim('Run')} stx deploy ${chalk.dim('to publish to production.')}`)
     } catch (err) {
       spinner.fail(chalk.red('Failed to create project'))
       console.error(err instanceof Error ? err.message : err)

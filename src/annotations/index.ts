@@ -7,7 +7,6 @@ import { parsePhp } from './parse-php'
 import { parseCSharp } from './parse-csharp'
 import { generatePages } from './generate-mdx'
 import type { AnnotatedSymbol, GeneratedPage, SignatureHash } from './types'
-import { createHash } from 'node:crypto'
 
 export { parseTypeScript, parseTypeScriptSource } from './parse-typescript'
 export { parsePython, parsePythonSource } from './parse-python'
@@ -88,7 +87,7 @@ function hashSignature(sym: AnnotatedSymbol): string {
     params: sym.signature.params.map((p) => ({ name: p.name, type: p.type, optional: p.optional })),
     returnType: sym.signature.returnType,
   })
-  return createHash('sha256').update(input).digest('hex').slice(0, 16)
+  return new Bun.CryptoHasher('sha256').update(input).digest('hex').slice(0, 16)
 }
 
 /**

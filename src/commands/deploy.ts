@@ -4,6 +4,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import { loadConfig } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
+import { resolveDocsRoot } from '../lib/resolve-docs-root'
 
 export const deployCommand = new Command('deploy')
   .description('Deploy documentation to Syntext (server-side compilation)')
@@ -14,7 +15,8 @@ export const deployCommand = new Command('deploy')
   .option('--json', 'Output result as JSON')
   .option('--promote [buildId]', 'Promote a preview deployment to production')
   .action(async (options) => {
-    const rootDir = join(process.cwd(), options.dir)
+    const baseDir = join(process.cwd(), options.dir)
+    const { docsRoot: rootDir } = await resolveDocsRoot(baseDir)
     const spinner = options.json ? null : ora('Preparing deployment...').start()
 
     try {
@@ -72,11 +74,15 @@ export const deployCommand = new Command('deploy')
 
       const sourceFiles: Array<{ path: string; content: Buffer }> = []
 
-      // Include syntext.json
-      const configPath = join(rootDir, 'syntext.json')
-      const configFile = Bun.file(configPath)
-      if (await configFile.exists()) {
-        sourceFiles.push({ path: 'syntext.json', content: Buffer.from(await configFile.arrayBuffer()) })
+      // Include config file (first match wins)
+      const configNames = ['syntext.json', 'syntext.yaml', 'syntext.yml', 'stx.json', 'stx.yaml', 'stx.yml']
+      for (const name of configNames) {
+        const configPath = join(rootDir, name)
+        const configFile = Bun.file(configPath)
+        if (await configFile.exists()) {
+          sourceFiles.push({ path: name, content: Buffer.from(await configFile.arrayBuffer()) })
+          break
+        }
       }
 
       // Include docs.json if present
