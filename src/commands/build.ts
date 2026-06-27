@@ -12,7 +12,7 @@ import { generateStaticHtml, isDraftPage, generateRedirectHtml } from '../lib/ht
 export const buildCommand = new Command('build')
   .description('Build documentation site (MDX → static HTML/CSS/JS)')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
-  .option('-o, --out <out>', 'Output directory', 'dist')
+  .option('-o, --out <out>', 'Output directory', '.syntext')
   .option('--json', 'Output build result as JSON')
   .option('--include-drafts', 'Include draft pages in build')
   .action(async (options) => {
@@ -152,6 +152,7 @@ export const buildCommand = new Command('build')
           }
         } else {
           spinner?.succeed(chalk.green(`Built ${pages.length} pages in ${durationMs}ms → ${options.out}/`) + (draftCount > 0 ? chalk.dim(` (${draftCount} draft(s) skipped)`) : ''))
+        console.log(chalk.dim(`\n  Run ${chalk.cyan('stx deploy')} to publish, or ${chalk.cyan('stx dev')} to preview locally.`))
         }
       }
     } catch (err) {

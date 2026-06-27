@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile, readFile, appendFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import chalk from 'chalk'
 import ora from 'ora'
@@ -67,6 +67,9 @@ export const initCommand = new Command('init')
         await writeFile(join(targetDir, 'Dockerfile'), generateDockerfile())
       }
 
+      // Add .syntext/ to .gitignore
+      await appendGitignore(targetDir)
+
       spinner.succeed(chalk.green('Syntext project created!'))
       console.log('')
       console.log(`  ${chalk.bold('Next steps:')}`)
@@ -74,7 +77,7 @@ export const initCommand = new Command('init')
       if (directory !== '.') {
         console.log(`    cd ${directory}`)
       }
-      console.log(`    syntext dev`)
+      console.log(`    stx dev`)
       console.log('')
       console.log(`  ${chalk.dim('This will start a local dev server with hot-reload.')}`)
     } catch (err) {
@@ -194,4 +197,18 @@ function generateDocsJson(): string {
     null,
     2
   )
+}
+
+async function appendGitignore(targetDir: string): Promise<void> {
+  const gitignorePath = join(targetDir, '.gitignore')
+  const entry = '.syntext/'
+
+  try {
+    const existing = await readFile(gitignorePath, 'utf-8')
+    if (existing.includes(entry)) return
+    await appendFile(gitignorePath, `\n# Syntext build output\n${entry}\n`)
+  } catch {
+    // .gitignore doesn't exist yet
+    await writeFile(gitignorePath, `# Syntext build output\n${entry}\n`)
+  }
 }

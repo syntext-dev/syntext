@@ -93,7 +93,7 @@ build-docs:
     - stx build
   artifacts:
     paths:
-      - dist/
+      - .syntext/
   only:
     changes:
       - docs/**/*
@@ -160,7 +160,7 @@ pipelines:
             - stx build
             - stx deploy --token $SYNTEXT_TOKEN
           artifacts:
-            - dist/**
+            - .syntext/**
 
   pull-requests:
     '**':
@@ -213,11 +213,11 @@ WORKDIR /app
 RUN bun install -g serve
 
 # Copy built assets
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/.syntext ./site
 
 EXPOSE 3000
 
-CMD ["serve", "dist", "-l", "3000"]
+CMD ["serve", "site", "-l", "3000"]
 `
 }
 
