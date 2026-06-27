@@ -104,36 +104,37 @@ jobs:
               return line ? line.split(/\s+/)[0] : ''
             }
 
-            const formula = `class Stx < Formula
-  desc "AI-powered developer documentation CLI"
-  homepage "https://syntext.dev"
-  version "${version}"
-  license "MIT"
-
-  on_macos do
-    if Hardware::CPU.arm?
-      url "https://github.com/syntext-dev/syntext/releases/download/${tag}/stx-darwin-arm64.tar.gz"
-      sha256 "${getSha('stx-darwin-arm64')}"
-    else
-      url "https://github.com/syntext-dev/syntext/releases/download/${tag}/stx-darwin-x64.tar.gz"
-      sha256 "${getSha('stx-darwin-x64')}"
-    end
-  end
-
-  on_linux do
-    url "https://github.com/syntext-dev/syntext/releases/download/${tag}/stx-linux-x64.tar.gz"
-    sha256 "${getSha('stx-linux-x64')}"
-  end
-
-  def install
-    bin.install Dir["stx-*"].first => "stx"
-  end
-
-  test do
-    assert_match "${version}", shell_output("\#{bin}/stx --version")
-  end
-end
-`
+            const formula = [
+              'class Stx < Formula',
+              '  desc "AI-powered developer documentation CLI"',
+              '  homepage "https://syntext.dev"',
+              `  version "${version}"`,
+              '  license "MIT"',
+              '',
+              '  on_macos do',
+              '    if Hardware::CPU.arm?',
+              `      url "https://github.com/syntext-dev/syntext/releases/download/${tag}/stx-darwin-arm64.tar.gz"`,
+              `      sha256 "${getSha('stx-darwin-arm64')}"`,
+              '    else',
+              `      url "https://github.com/syntext-dev/syntext/releases/download/${tag}/stx-darwin-x64.tar.gz"`,
+              `      sha256 "${getSha('stx-darwin-x64')}"`,
+              '    end',
+              '  end',
+              '',
+              '  on_linux do',
+              `    url "https://github.com/syntext-dev/syntext/releases/download/${tag}/stx-linux-x64.tar.gz"`,
+              `    sha256 "${getSha('stx-linux-x64')}"`,
+              '  end',
+              '',
+              '  def install',
+              '    bin.install Dir["stx-*"].first => "stx"',
+              '  end',
+              '',
+              '  test do',
+              `    assert_match "${version}", shell_output("#{bin}/stx --version")`,
+              '  end',
+              'end',
+            ].join('\n') + '\n'
 
             // Get existing file SHA
             let sha
