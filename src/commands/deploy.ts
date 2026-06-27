@@ -2,7 +2,7 @@ import { Command } from 'commander'
 import { join } from 'node:path'
 import chalk from 'chalk'
 import ora from 'ora'
-import { loadConfig } from '../lib/config'
+import { loadConfig, configFileExists } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
 
@@ -20,6 +20,11 @@ export const deployCommand = new Command('deploy')
     const spinner = options.json ? null : ora('Preparing deployment...').start()
 
     try {
+      // Check if config file exists before loading
+      if (!(await configFileExists(rootDir))) {
+        throw new Error('No syntext.json found in this directory. Run `stx init` to create a new documentation project.')
+      }
+
       const config = await loadConfig(rootDir)
       const token = options.token ?? (await loadCredentials())?.token
 
@@ -29,7 +34,7 @@ export const deployCommand = new Command('deploy')
 
       const projectId = config.projectId
       if (!projectId) {
-        throw new Error('No projectId in syntext.json. Run `stx init` and connect to a project.')
+        throw new Error('No projectId in syntext.json. Run `stx connect <projectId>` to link this directory to a project.')
       }
 
       const apiUrl = process.env.SYNTEXT_API_URL ?? 'https://api.syntext.dev'

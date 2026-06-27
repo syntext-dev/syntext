@@ -1,6 +1,12 @@
 import { join } from 'node:path'
-import { readFile } from 'node:fs/promises'
+import { readFile, access } from 'node:fs/promises'
 import { parse as parseYaml } from 'yaml'
+
+const CONFIG_FILE_NAMES = [
+  'syntext.json', 'syntext.yaml', 'syntext.yml',
+  'stx.json', 'stx.yaml', 'stx.yml',
+  'syntext.config.ts', 'syntext.config.js', 'syntext.config.json',
+]
 
 export type SyntextConfig = {
   name?: string
@@ -52,17 +58,7 @@ export type SidebarOverride = {
 }
 
 export async function loadConfig(rootDir: string): Promise<SyntextConfig> {
-  const configPaths = [
-    join(rootDir, 'syntext.json'),
-    join(rootDir, 'syntext.yaml'),
-    join(rootDir, 'syntext.yml'),
-    join(rootDir, 'stx.json'),
-    join(rootDir, 'stx.yaml'),
-    join(rootDir, 'stx.yml'),
-    join(rootDir, 'syntext.config.ts'),
-    join(rootDir, 'syntext.config.js'),
-    join(rootDir, 'syntext.config.json'),
-  ]
+  const configPaths = CONFIG_FILE_NAMES.map(f => join(rootDir, f))
 
   for (const configPath of configPaths) {
     try {
@@ -95,4 +91,19 @@ export async function loadConfig(rootDir: string): Promise<SyntextConfig> {
 // Export for use in syntext init
 export function defineConfig(config: SyntextConfig): SyntextConfig {
   return config
+}
+
+/**
+ * Check if a config file exists in the given directory.
+ */
+export async function configFileExists(rootDir: string): Promise<boolean> {
+  for (const file of CONFIG_FILE_NAMES) {
+    try {
+      await access(join(rootDir, file))
+      return true
+    } catch {
+      continue
+    }
+  }
+  return false
 }

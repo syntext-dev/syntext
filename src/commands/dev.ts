@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { watch } from 'node:fs'
 import chalk from 'chalk'
 import ora from 'ora'
-import { loadConfig } from '../lib/config'
+import { loadConfig, configFileExists } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
 
@@ -16,6 +16,13 @@ export const devCommand = new Command('dev')
     const baseDir = join(process.cwd(), options.dir)
     const { docsRoot: rootDir, nested } = await resolveDocsRoot(baseDir)
 
+    // Check if config file exists before loading
+    if (!(await configFileExists(rootDir))) {
+      console.error(chalk.red('No syntext.json found in this directory.'))
+      console.error(chalk.dim('Run `stx init` to create a new documentation project.'))
+      process.exit(1)
+    }
+
     const config = await loadConfig(rootDir)
     const token = options.token ?? (await loadCredentials())?.token
 
@@ -26,7 +33,8 @@ export const devCommand = new Command('dev')
 
     const projectId = config.projectId
     if (!projectId) {
-      console.error(chalk.red('No projectId in syntext.json. Run `stx init` and connect to a project.'))
+      console.error(chalk.red('No projectId in syntext.json.'))
+      console.error(chalk.dim('Run `stx connect <projectId>` to link this directory to a project.'))
       process.exit(1)
     }
 
