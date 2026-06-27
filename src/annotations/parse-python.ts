@@ -1,12 +1,15 @@
 import { readFile } from 'node:fs/promises'
 import { parseAnnotationBlock } from './parse-annotation'
+import { parsePythonDocstring } from './parse-conventional'
 import type { AnnotatedSymbol, ParsedSignature, SignatureParam } from './types'
 
 /**
- * Parse Python files for @stx annotations in docstrings and comments.
+ * Parse Python files for @stx annotations and conventional docstrings.
+ * Priority: @stx annotations > Google/NumPy/Sphinx-style docstrings.
  * Supports:
  *   # @stx group "GroupName"
  *   Triple-quoted docstrings containing @stx directives
+ *   Standard Google, NumPy, and Sphinx docstrings (zero-config)
  */
 export async function parsePython(filePath: string): Promise<AnnotatedSymbol[]> {
   const source = await readFile(filePath, 'utf-8')
@@ -57,12 +60,16 @@ export function parsePythonSource(source: string, filePath: string): AnnotatedSy
       continue
     }
 
-    // Look for def/class with docstring containing @stx
+    // Look for def/class with docstring
     const defSig = parsePythonDefinition(lines, i)
     if (defSig) {
       const docstring = extractDocstring(lines, i + 1)
-      if (docstring && docstring.content.includes('@stx')) {
-        const annotation = parseAnnotationBlock(docstring.content)
+      if (docstring) {
+        // Priority: @stx annotations > conventional docstrings
+        const annotation = docstring.content.includes('@stx')
+          ? parseAnnotationBlock(docstring.content)
+          : parsePythonDocstring(docstring.content)
+
         if (annotation) {
           symbols.push({
             kind: defSig.kind,

@@ -1,10 +1,11 @@
 import { readFile } from 'node:fs/promises'
 import { parseAnnotationBlock } from './parse-annotation'
+import { parseConventionalComment } from './parse-conventional'
 import type { AnnotatedSymbol, ParsedSignature, SignatureParam } from './types'
 
 /**
- * Parse TypeScript/JavaScript files for @stx annotations.
- * Scans triple-slash comments and doc comments containing @stx directives.
+ * Parse TypeScript/JavaScript files for @stx annotations and conventional JSDoc comments.
+ * Priority: @stx annotations > JSDoc/conventional doc comments.
  */
 export async function parseTypeScript(filePath: string): Promise<AnnotatedSymbol[]> {
   const source = await readFile(filePath, 'utf-8')
@@ -21,7 +22,11 @@ export function parseTypeScriptSource(source: string, filePath: string): Annotat
     const commentResult = extractComment(lines, i)
     if (commentResult) {
       const { comment, endLine } = commentResult
-      const annotation = parseAnnotationBlock(comment)
+
+      // Priority: @stx annotation > conventional JSDoc
+      const annotation = comment.includes('@stx')
+        ? parseAnnotationBlock(comment)
+        : parseConventionalComment(comment)
 
       if (annotation) {
         // Next non-empty, non-comment line should be the symbol definition
@@ -65,7 +70,7 @@ function extractComment(lines: string[], startIdx: number): { comment: string; e
       end++
     }
     const comment = commentLines.join('\n')
-    if (comment.includes('@stx')) {
+    if (comment.trim()) {
       return { comment, endLine: end - 1 }
     }
     return null
@@ -78,10 +83,8 @@ function extractComment(lines: string[], startIdx: number): { comment: string; e
 
     if (line.includes('*/')) {
       // Single-line comment
-      commentLines.push(line.replace(/^\/\*\*/, '').replace(/\*\/$/, '').trim())
-      return commentLines[0].includes('@stx')
-        ? { comment: commentLines[0], endLine: end }
-        : null
+      const content = line.replace(/^\/\*\*/, '').replace(/\*\/$/, '').trim()
+      return content ? { comment: content, endLine: end } : null
     }
 
     commentLines.push(line.replace(/^\/\*\*/, '').trim())
@@ -98,7 +101,7 @@ function extractComment(lines: string[], startIdx: number): { comment: string; e
     }
 
     const comment = commentLines.join('\n')
-    if (comment.includes('@stx')) {
+    if (comment.trim()) {
       return { comment, endLine: end }
     }
     return null

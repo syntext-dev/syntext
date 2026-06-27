@@ -1,9 +1,11 @@
 import { readFile } from 'node:fs/promises'
 import { parseAnnotationBlock } from './parse-annotation'
+import { parseGoDocComment } from './parse-conventional'
 import type { AnnotatedSymbol, ParsedSignature, SignatureParam } from './types'
 
 /**
- * Parse Go files for @stx annotations in `// @stx ...` comments.
+ * Parse Go files for @stx annotations and conventional Go doc comments.
+ * Priority: @stx annotations > standard Go doc comments.
  */
 export async function parseGo(filePath: string): Promise<AnnotatedSymbol[]> {
   const source = await readFile(filePath, 'utf-8')
@@ -19,15 +21,20 @@ export function parseGoSource(source: string, filePath: string): AnnotatedSymbol
     const commentResult = extractGoComment(lines, i)
     if (commentResult) {
       const { comment, endLine } = commentResult
-      const annotation = parseAnnotationBlock(comment)
 
-      if (annotation) {
-        let defLine = endLine + 1
-        while (defLine < lines.length && lines[defLine].trim() === '') defLine++
+      // Find the definition after the comment
+      let defLine = endLine + 1
+      while (defLine < lines.length && lines[defLine].trim() === '') defLine++
 
-        if (defLine < lines.length) {
-          const sig = parseGoDefinition(lines, defLine)
-          if (sig) {
+      if (defLine < lines.length) {
+        const sig = parseGoDefinition(lines, defLine)
+        if (sig) {
+          // Priority: @stx > conventional Go doc comment
+          const annotation = comment.includes('@stx')
+            ? parseAnnotationBlock(comment)
+            : parseGoDocComment(comment, sig.signature.name)
+
+          if (annotation) {
             symbols.push({
               kind: sig.kind,
               name: sig.signature.name,
@@ -60,7 +67,7 @@ function extractGoComment(lines: string[], startIdx: number): { comment: string;
       end++
     }
     const comment = commentLines.join('\n')
-    if (comment.includes('@stx')) {
+    if (comment.trim()) {
       return { comment, endLine: end - 1 }
     }
     return null
@@ -73,8 +80,7 @@ function extractGoComment(lines: string[], startIdx: number): { comment: string;
 
     if (line.includes('*/')) {
       const content = line.replace(/^\/\*/, '').replace(/\*\/$/, '').trim()
-      if (content.includes('@stx')) return { comment: content, endLine: end }
-      return null
+      return content ? { comment: content, endLine: end } : null
     }
 
     commentLines.push(line.replace(/^\/\*/, '').trim())
@@ -90,7 +96,7 @@ function extractGoComment(lines: string[], startIdx: number): { comment: string;
     }
 
     const comment = commentLines.join('\n')
-    if (comment.includes('@stx')) {
+    if (comment.trim()) {
       return { comment, endLine: end }
     }
     return null

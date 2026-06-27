@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { parseAnnotationBlock } from './parse-annotation'
+import { parseConventionalComment } from './parse-conventional'
 import type { AnnotatedSymbol, ParsedSignature, SignatureParam } from './types'
 
 export async function parseJava(filePath: string): Promise<AnnotatedSymbol[]> {
@@ -14,30 +15,32 @@ export function parseJavaSource(source: string, filePath: string): AnnotatedSymb
   let i = 0
   while (i < lines.length) {
     const comment = extractComment(lines, i)
-    if (!comment || !comment.comment.includes('@stx')) {
+    if (!comment) {
       i++
       continue
     }
 
-    const annotation = parseAnnotationBlock(comment.comment)
-    if (!annotation) {
-      i = comment.endLine + 1
-      continue
-    }
-
+    // Find the definition after the comment (skip annotations like @Override)
     let defLine = comment.endLine + 1
-    while (defLine < lines.length && lines[defLine].trim() === '') defLine++
+    while (defLine < lines.length && (lines[defLine].trim() === '' || lines[defLine].trim().startsWith('@'))) defLine++
 
     const parsed = parseJavaDefinition(lines[defLine] || '')
     if (parsed) {
-      symbols.push({
-        kind: parsed.kind,
-        name: parsed.signature.name,
-        annotation,
-        signature: parsed.signature,
-        sourceFile: filePath,
-        sourceLine: defLine + 1,
-      })
+      // Priority: @stx > Javadoc conventional comments
+      const annotation = comment.comment.includes('@stx')
+        ? parseAnnotationBlock(comment.comment)
+        : parseConventionalComment(comment.comment)
+
+      if (annotation) {
+        symbols.push({
+          kind: parsed.kind,
+          name: parsed.signature.name,
+          annotation,
+          signature: parsed.signature,
+          sourceFile: filePath,
+          sourceLine: defLine + 1,
+        })
+      }
     }
 
     i = comment.endLine + 1
@@ -49,6 +52,20 @@ export function parseJavaSource(source: string, filePath: string): AnnotatedSymb
 function extractComment(lines: string[], start: number): { comment: string; endLine: number } | null {
   const line = lines[start].trim()
 
+  // Only match /** Javadoc-style comments (not // single-line unless @stx)
+  if (line.startsWith('/**')) {
+    const buffer: string[] = [line.replace(/^\/\*\*/, '').trim()]
+    let end = start + 1
+    while (end < lines.length && !lines[end].includes('*/')) {
+      buffer.push(lines[end].replace(/^\s*\*\s?/, '').trim())
+      end++
+    }
+    if (end < lines.length) buffer.push(lines[end].replace(/\*\//, '').replace(/^\s*\*\s?/, '').trim())
+    const comment = buffer.join('\n').trim()
+    if (comment) return { comment, endLine: end }
+  }
+
+  // // line comments only if they contain @stx (otherwise too noisy in Java)
   if (line.startsWith('//')) {
     const buffer: string[] = []
     let end = start
@@ -56,18 +73,10 @@ function extractComment(lines: string[], start: number): { comment: string; endL
       buffer.push(lines[end].trim().slice(2).trim())
       end++
     }
-    return { comment: buffer.join('\n'), endLine: end - 1 }
-  }
-
-  if (line.startsWith('/**') || line.startsWith('/*')) {
-    const buffer: string[] = [line.replace(/^\/\*\*?/, '').trim()]
-    let end = start + 1
-    while (end < lines.length && !lines[end].includes('*/')) {
-      buffer.push(lines[end].replace(/^\s*\*\s?/, '').trim())
-      end++
+    const comment = buffer.join('\n')
+    if (comment.includes('@stx')) {
+      return { comment, endLine: end - 1 }
     }
-    if (end < lines.length) buffer.push(lines[end].replace(/\*\//, '').replace(/^\s*\*\s?/, '').trim())
-    return { comment: buffer.join('\n'), endLine: end }
   }
 
   return null

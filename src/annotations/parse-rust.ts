@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { parseAnnotationBlock } from './parse-annotation'
+import { parseRustDocComment } from './parse-conventional'
 import type { AnnotatedSymbol, ParsedSignature, SignatureParam } from './types'
 
 export async function parseRust(filePath: string): Promise<AnnotatedSymbol[]> {
@@ -13,15 +14,10 @@ export function parseRustSource(source: string, filePath: string): AnnotatedSymb
 
   let i = 0
   while (i < lines.length) {
-    const comment = extractLineComments(lines, i, '//')
-    if (!comment || !comment.comment.includes('@stx')) {
+    // Check for /// or //! doc comment blocks
+    const comment = extractDocComment(lines, i)
+    if (!comment) {
       i++
-      continue
-    }
-
-    const annotation = parseAnnotationBlock(comment.comment)
-    if (!annotation) {
-      i = comment.endLine + 1
       continue
     }
 
@@ -30,14 +26,21 @@ export function parseRustSource(source: string, filePath: string): AnnotatedSymb
 
     const parsed = parseRustDefinition(lines[defLine] || '')
     if (parsed) {
-      symbols.push({
-        kind: parsed.kind,
-        name: parsed.signature.name,
-        annotation,
-        signature: parsed.signature,
-        sourceFile: filePath,
-        sourceLine: defLine + 1,
-      })
+      // Priority: @stx > conventional Rust doc comments
+      const annotation = comment.comment.includes('@stx')
+        ? parseAnnotationBlock(comment.comment)
+        : parseRustDocComment(comment.raw)
+
+      if (annotation) {
+        symbols.push({
+          kind: parsed.kind,
+          name: parsed.signature.name,
+          annotation,
+          signature: parsed.signature,
+          sourceFile: filePath,
+          sourceLine: defLine + 1,
+        })
+      }
     }
 
     i = comment.endLine + 1
@@ -46,17 +49,47 @@ export function parseRustSource(source: string, filePath: string): AnnotatedSymb
   return symbols
 }
 
-function extractLineComments(lines: string[], start: number, prefix: string): { comment: string; endLine: number } | null {
-  if (!lines[start]?.trim().startsWith(prefix)) return null
+function extractDocComment(lines: string[], start: number): { comment: string; raw: string; endLine: number } | null {
+  const line = lines[start]?.trim()
+  if (!line) return null
 
-  const buffer: string[] = []
-  let end = start
-  while (end < lines.length && lines[end].trim().startsWith(prefix)) {
-    buffer.push(lines[end].trim().slice(prefix.length).trim())
-    end++
+  // /// or //! doc comments
+  if (line.startsWith('///') || line.startsWith('//!')) {
+    const buffer: string[] = []
+    const rawBuffer: string[] = []
+    let end = start
+    while (end < lines.length && (lines[end].trim().startsWith('///') || lines[end].trim().startsWith('//!'))) {
+      const trimmed = lines[end].trim()
+      buffer.push(trimmed.slice(3).trim())
+      rawBuffer.push(trimmed)
+      end++
+    }
+
+    const comment = buffer.join('\n')
+    if (comment.trim()) {
+      return { comment, raw: rawBuffer.join('\n'), endLine: end - 1 }
+    }
+    return null
   }
 
-  return { comment: buffer.join('\n'), endLine: end - 1 }
+  // Regular // comments (for @stx annotations in non-doc comments)
+  if (line.startsWith('//') && !line.startsWith('///')) {
+    const buffer: string[] = []
+    let end = start
+    while (end < lines.length && lines[end].trim().startsWith('//') && !lines[end].trim().startsWith('///')) {
+      buffer.push(lines[end].trim().slice(2).trim())
+      end++
+    }
+
+    const comment = buffer.join('\n')
+    // Only return non-doc // comments if they contain @stx
+    if (comment.includes('@stx')) {
+      return { comment, raw: comment, endLine: end - 1 }
+    }
+    return null
+  }
+
+  return null
 }
 
 function parseRustDefinition(line: string): { kind: AnnotatedSymbol['kind']; signature: ParsedSignature } | null {
