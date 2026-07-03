@@ -8,6 +8,46 @@ import { detectDrift, findUnannotated, loadStoredHashes, saveHashes, generateDri
 import type { DriftConfig, DriftIssue } from '../annotations/drift'
 import { loadStyleGuide, validateStyleGuide } from '../annotations/style-guide'
 
+/**
+ * Remove fenced code blocks and inline code spans so their contents
+ * (e.g. markdown syntax examples) are not validated as real links.
+ */
+export function stripCodeBlocks(content: string): string {
+  return content
+    .replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1\s*$/gm, '')
+    .replace(/`[^`\n]*`/g, '')
+}
+
+const ASSET_EXTENSIONS = /\.(png|jpe?g|gif|svg|webp|ico|pdf|mp4|webm|zip|txt|json|xml|css|js)$/i
+
+/**
+ * Find internal links that don't resolve to a known docs page.
+ * Skips code blocks, strips #anchors, and ignores static asset paths.
+ */
+export function findBrokenLinks(content: string, files: string[]): string[] {
+  const broken: string[] = []
+  const linkPattern = /\[([^\]]*)\]\(([^)]*)\)/g
+  const scannable = stripCodeBlocks(content)
+  let match
+  while ((match = linkPattern.exec(scannable)) !== null) {
+    const href = match[2]
+    if (!href.startsWith('/') && !href.startsWith('./')) continue
+
+    const pathOnly = href.split('#')[0].split('?')[0]
+    if (!pathOnly || pathOnly === '/') continue
+    if (href.startsWith('/public/') || ASSET_EXTENSIONS.test(pathOnly)) continue
+
+    const targetSlug = pathOnly.replace(/^[./]+/, '').replace(/\/$/, '')
+    const targetFile = files.find(
+      (f) => f.replace(/\.(md|mdx)$/, '') === targetSlug || f.replace(/\/index\.(md|mdx)$/, '') === targetSlug
+    )
+    if (!targetFile) {
+      broken.push(href)
+    }
+  }
+  return broken
+}
+
 export const checkCommand = new Command('check')
   .description('Validate documentation and detect annotation drift')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
@@ -54,19 +94,8 @@ export const checkCommand = new Command('check')
           }
         }
 
-        const linkPattern = /\[([^\]]*)\]\(([^)]*)\)/g
-        let match
-        while ((match = linkPattern.exec(content)) !== null) {
-          const href = match[2]
-          if (href.startsWith('/') || href.startsWith('./')) {
-            const targetSlug = href.replace(/^[./]+/, '').replace(/\/$/, '')
-            const targetFile = files.find(
-              (f) => f.replace(/\.(md|mdx)$/, '') === targetSlug || f.replace(/\/index\.(md|mdx)$/, '') === targetSlug
-            )
-            if (!targetFile && !href.startsWith('/public/')) {
-              issues.push({ file, type: 'error', message: 'Broken link: ' + href })
-            }
-          }
+        for (const href of findBrokenLinks(content, files)) {
+          issues.push({ file, type: 'error', message: 'Broken link: ' + href })
         }
       }
 
