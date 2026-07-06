@@ -2,6 +2,7 @@
 import { Command } from 'commander'
 import { initCommand } from './commands/init'
 import { devCommand } from './commands/dev'
+import { buildCommand } from './commands/build'
 import { deployCommand } from './commands/deploy'
 import { connectCommand } from './commands/connect'
 import { projectsCommand } from './commands/projects'
@@ -16,10 +17,11 @@ const program = new Command()
 program
   .name('stx')
   .description('AI-powered documentation platform CLI')
-  .version('0.5.4')
+  .version('0.6.0')
 
 program.addCommand(initCommand)
 program.addCommand(devCommand)
+program.addCommand(buildCommand)
 program.addCommand(deployCommand)
 program.addCommand(connectCommand)
 program.addCommand(projectsCommand)

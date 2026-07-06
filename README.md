@@ -27,7 +27,7 @@ bun test    # run tests
 |---------|-------------|
 | `stx init` | Scaffold a new docs project |
 | `stx dev` | Local dev server with hot-reload |
-| `stx build` | Compile MDX → static site |
+| `stx build` | Build on the Syntext backend and download the static site (for self-hosting) |
 | `stx deploy` | Push to Syntext hosting |
 | `stx check` | Validate annotations, links, frontmatter |
 | `stx generate` | Generate pages from OpenAPI/AsyncAPI/GraphQL specs |
