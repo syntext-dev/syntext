@@ -185,6 +185,7 @@ export const buildCommand = new Command('build')
         console.log(`\n  ${chalk.dim('Serve it with any static host, e.g.')} npx serve ${options.output}\n`)
       }
     } catch (err) {
+      if (process.env.STX_DEBUG) console.error((err as Error).stack)
       if (options.json) {
         console.log(JSON.stringify({ success: false, error: (err as Error).message }))
       } else {
