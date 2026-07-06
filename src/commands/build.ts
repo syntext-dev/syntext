@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { join, dirname } from 'node:path'
+import { join, dirname, resolve } from 'node:path'
 import { mkdir } from 'node:fs/promises'
 import chalk from 'chalk'
 import ora from 'ora'
@@ -45,7 +45,7 @@ export const buildCommand = new Command('build')
   .option('--token <token>', 'Auth token (for CI, overrides login)')
   .option('--json', 'Output result as JSON')
   .action(async (options) => {
-    const baseDir = join(process.cwd(), options.dir)
+    const baseDir = resolve(process.cwd(), options.dir)
     const { docsRoot: rootDir } = await resolveDocsRoot(baseDir)
     const spinner = options.json ? null : ora('Preparing build...').start()
 
@@ -161,7 +161,7 @@ export const buildCommand = new Command('build')
       }
 
       const bundle = new Uint8Array(await bundleRes.arrayBuffer())
-      const outputDir = join(process.cwd(), options.output)
+      const outputDir = resolve(process.cwd(), options.output)
       const { fileCount, totalBytes } = await extractExportBundle(bundle, outputDir)
 
       if (options.json) {
