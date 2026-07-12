@@ -48,7 +48,15 @@ export type SyntextConfig = {
     locales?: Array<{ code: string; label: string; dir?: 'ltr' | 'rtl' }>
   }
   versioning?: {
-    versions?: Array<{ label: string; branch?: string; tag?: string; default?: boolean }>
+    versions?: Array<{
+      label: string
+      branch?: string
+      tag?: string
+      default?: boolean
+      deprecated?: boolean
+      deprecationMessage?: string
+      autoRedirectToLatest?: boolean
+    }>
   }
 }
 
