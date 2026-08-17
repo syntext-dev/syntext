@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
 import { join } from 'node:path'
 import { mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { loadConfig, defineConfig, type SyntextConfig } from './config'
+import { loadConfig, defineConfig, type SyntextConfig, normalizeLegacyFonts } from './config'
 
 describe('loadConfig', () => {
   let tempDir: string
@@ -112,5 +112,55 @@ describe('defineConfig', () => {
 
     const result = defineConfig(config)
     expect(result).toEqual(config)
+  })
+})
+
+describe('normalizeLegacyFonts', () => {
+  it('should map the deprecated fonts block onto themeOverrides.fonts', () => {
+    // `fonts` was declared for a long time but consumed by nothing — setting it
+    // silently did nothing. It now reaches the theme's font roles.
+    const out = normalizeLegacyFonts({
+      name: 'Docs',
+      fonts: { heading: 'Sora', body: 'Outfit', mono: 'Fira Code' },
+    })
+    expect(out.themeOverrides?.fonts).toEqual({
+      display: 'Sora',
+      body: 'Outfit',
+      mono: 'Fira Code',
+    })
+  })
+
+  it('should rename heading to display, matching the token contract', () => {
+    const out = normalizeLegacyFonts({ name: 'Docs', fonts: { heading: 'Sora' } })
+    expect(out.themeOverrides?.fonts).toEqual({ display: 'Sora' })
+  })
+
+  it('should let an explicit themeOverrides.fonts win over the legacy block', () => {
+    const out = normalizeLegacyFonts({
+      name: 'Docs',
+      fonts: { body: 'Outfit' },
+      themeOverrides: { fonts: { body: 'Geist Mono' } },
+    })
+    expect(out.themeOverrides?.fonts?.body).toBe('Geist Mono')
+  })
+
+  it('should preserve unrelated themeOverrides keys', () => {
+    const out = normalizeLegacyFonts({
+      name: 'Docs',
+      fonts: { body: 'Outfit' },
+      themeOverrides: { colors: { light: { accent: '#077155' } } },
+    })
+    expect(out.themeOverrides?.colors?.light?.accent).toBe('#077155')
+    expect(out.themeOverrides?.fonts?.body).toBe('Outfit')
+  })
+
+  it('should return the config untouched when there is no legacy fonts block', () => {
+    const config = { name: 'Docs', theme: 'gravv' }
+    expect(normalizeLegacyFonts(config)).toBe(config)
+  })
+
+  it('should return the config untouched when fonts is empty', () => {
+    const config = { name: 'Docs', fonts: {} }
+    expect(normalizeLegacyFonts(config)).toBe(config)
   })
 })
