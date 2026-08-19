@@ -78,6 +78,12 @@ export type SyntextConfig = {
     dismissible?: boolean
     link?: { label: string; href: string }
   }
+  /**
+   * OpenAPI spec(s) to generate API reference pages from. Accepts a single path,
+   * a list of paths, or entries pairing a path with the URL prefix its generated
+   * pages live under.
+   */
+  openapi?: string | string[] | Array<{ path: string; prefix?: string }>
   customCSS?: string[]
   customJS?: string[]
   redirects?: Array<{ from: string; to: string; status?: number }>

@@ -3,8 +3,44 @@ import { join } from 'node:path'
 import chalk from 'chalk'
 import ora from 'ora'
 import { loadConfig, configFileExists } from '../lib/config'
+import type { SyntextConfig } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
+
+/**
+ * Every OpenAPI spec path a deploy must upload, derived from the `openapi`
+ * config rather than a fixed filename list.
+ *
+ * Accepts all three documented forms — a single path, a list of paths, or
+ * entries pairing a path with a URL prefix — and falls back to the conventional
+ * root filenames when the config declares nothing, so projects that relied on
+ * `openapi.json` sitting at the root keep working.
+ *
+ * Paths are returned relative to the project root, with any leading `./`
+ * stripped, because that is the shape the upload bundle expects.
+ */
+export function collectSpecPaths(config: SyntextConfig, _rootDir: string): string[] {
+  const normalize = (p: string) => p.replace(/^\.\//, '').trim()
+  const spec = config.openapi
+
+  const declared: string[] = []
+  if (typeof spec === 'string') {
+    declared.push(spec)
+  } else if (Array.isArray(spec)) {
+    for (const entry of spec) {
+      if (typeof entry === 'string') declared.push(entry)
+      else if (entry && typeof entry.path === 'string') declared.push(entry.path)
+    }
+  }
+
+  if (declared.length > 0) {
+    // De-duplicate: two prefixes may legitimately share one spec file.
+    return [...new Set(declared.map(normalize).filter(Boolean))]
+  }
+
+  // Nothing declared — keep the historical convention.
+  return ['openapi.json', 'openapi.yaml', 'openapi.yml']
+}
 
 export const deployCommand = new Command('deploy')
   .description('Deploy documentation to Syntext (server-side compilation)')
@@ -119,13 +155,32 @@ export const deployCommand = new Command('deploy')
         // public/ dir doesn't exist — that's fine
       }
 
-      // Include openapi.json/yaml if present
-      for (const specName of ['openapi.json', 'openapi.yaml', 'openapi.yml']) {
-        const specPath = join(rootDir, specName)
-        const specFile = Bun.file(specPath)
+      // Include OpenAPI specs.
+      //
+      // This used to check only for openapi.{json,yaml,yml} at the project root,
+      // which silently dropped every spec declared via the `openapi` config —
+      // including the array form pointing at a subdirectory. The build then
+      // generated no API reference pages and reported success, so a project with
+      // specs would deploy with its entire API reference missing.
+      const specPaths = collectSpecPaths(config, rootDir)
+      const missingSpecs: string[] = []
+      for (const rel of specPaths) {
+        const specFile = Bun.file(join(rootDir, rel))
         if (await specFile.exists()) {
-          sourceFiles.push({ path: specName, content: Buffer.from(await specFile.arrayBuffer()) })
+          sourceFiles.push({ path: rel, content: Buffer.from(await specFile.arrayBuffer()) })
+        } else {
+          missingSpecs.push(rel)
         }
+      }
+
+      // A declared-but-absent spec means the deploy would drop pages. Fail rather
+      // than publish a site quietly missing its API reference.
+      if (missingSpecs.length > 0) {
+        throw new Error(
+          `OpenAPI spec(s) declared in your config but not found:\n` +
+            missingSpecs.map((m) => `  - ${m}`).join('\n') +
+            `\n\nDeploying would publish a site with no API reference pages for them.`
+        )
       }
 
       if (sourceFiles.length === 0) {
