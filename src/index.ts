@@ -17,7 +17,7 @@ const program = new Command()
 program
   .name('stx')
   .description('AI-powered documentation platform CLI')
-  .version('0.6.2')
+  .version('0.6.3')
 
 program.addCommand(initCommand)
 program.addCommand(devCommand)
