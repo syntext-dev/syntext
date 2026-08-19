@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test'
-import { collectSpecPaths } from './deploy'
+import { collectSpecPaths, collectSchemaPaths } from './deploy'
 import type { SyntextConfig } from '../lib/config'
 
 const ROOT = '/tmp/project'
@@ -80,5 +80,45 @@ describe('collectSpecPaths', () => {
     expect(paths).toHaveLength(14)
     expect(paths).toContain('openapi/customers.yaml')
     expect(paths.every((p) => p.startsWith('openapi/'))).toBe(true)
+  })
+})
+
+describe('collectSchemaPaths', () => {
+  // Fake readdir so the test does not depend on a real tree.
+  const fakeTree = (tree: Record<string, string[]>) => async (dir: string) => {
+    // join('/p', 'proto/') keeps the trailing slash, so normalise before matching.
+    const norm = dir.replace(/\/+$/, '')
+    if (!(norm in tree)) throw new Error('ENOENT')
+    return tree[norm]
+  }
+
+  it('should find a .proto in proto/', async () => {
+    const paths = await collectSchemaPaths('/p', fakeTree({ '/p/proto': ['service.proto'] }))
+    expect(paths).toContain('proto/service.proto')
+  })
+
+  it('should find a GraphQL schema in schema/', async () => {
+    const paths = await collectSchemaPaths('/p', fakeTree({ '/p/schema': ['api.graphql'] }))
+    expect(paths).toContain('schema/api.graphql')
+  })
+
+  it('should find asyncapi files by filename', async () => {
+    const paths = await collectSchemaPaths('/p', fakeTree({ '/p/api': ['asyncapi.yaml'] }))
+    expect(paths).toContain('api/asyncapi.yaml')
+  })
+
+  it('should skip docs/, which is uploaded wholesale already', async () => {
+    const paths = await collectSchemaPaths('/p', fakeTree({ '/p/docs': ['api.graphql'] }))
+    expect(paths).toEqual([])
+  })
+
+  it('should ignore unrelated files', async () => {
+    const paths = await collectSchemaPaths('/p', fakeTree({ '/p/api': ['README.md', 'notes.txt'] }))
+    expect(paths).toEqual([])
+  })
+
+  it('should tolerate missing directories', async () => {
+    const paths = await collectSchemaPaths('/p', async () => { throw new Error('ENOENT') })
+    expect(paths).toEqual([])
   })
 })

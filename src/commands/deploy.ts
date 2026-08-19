@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { join } from 'node:path'
+import { readdir } from 'node:fs/promises'
 import chalk from 'chalk'
 import ora from 'ora'
 import { loadConfig, configFileExists } from '../lib/config'
@@ -40,6 +41,49 @@ export function collectSpecPaths(config: SyntextConfig, _rootDir: string): strin
 
   // Nothing declared — keep the historical convention.
   return ['openapi.json', 'openapi.yaml', 'openapi.yml']
+}
+
+/**
+ * Directories and extensions the build pipeline searches for protocol schemas.
+ * Mirrors `findFileByExtension` in the backend build worker — if that list
+ * changes, this must change with it, or the schema is uploaded but never found
+ * (or worse, found by the build but never uploaded).
+ */
+const SCHEMA_DIRS = ['', 'api/', 'spec/', 'docs/', 'proto/', 'schema/']
+const SCHEMA_EXTENSIONS = ['.graphql', '.gql', '.proto', 'asyncapi.yaml', 'asyncapi.yml', 'asyncapi.json']
+
+/**
+ * Protocol schema files (GraphQL, gRPC, AsyncAPI) the build would look for.
+ *
+ * Same failure mode as the OpenAPI bug: the build searches several directories,
+ * but a deploy only uploaded docs/ and public/. A .proto in proto/ or a schema
+ * in schema/ never reached the build, so the reference pages it would have
+ * generated were silently absent.
+ *
+ * Returns paths relative to the project root. Files already covered by the
+ * docs/ upload are skipped, since they are uploaded anyway.
+ */
+export async function collectSchemaPaths(
+  rootDir: string,
+  readdirFn: (dir: string) => Promise<string[]>
+): Promise<string[]> {
+  const found: string[] = []
+  for (const dir of SCHEMA_DIRS) {
+    let entries: string[]
+    try {
+      entries = await readdirFn(join(rootDir, dir))
+    } catch {
+      continue // directory does not exist — expected for most projects
+    }
+    for (const entry of entries) {
+      if (!SCHEMA_EXTENSIONS.some((ext) => entry.endsWith(ext))) continue
+      const rel = `${dir}${entry}`
+      // docs/ is uploaded wholesale already.
+      if (rel.startsWith('docs/')) continue
+      found.push(rel)
+    }
+  }
+  return [...new Set(found)]
 }
 
 export const deployCommand = new Command('deploy')
@@ -170,6 +214,15 @@ export const deployCommand = new Command('deploy')
           sourceFiles.push({ path: rel, content: Buffer.from(await specFile.arrayBuffer()) })
         } else {
           missingSpecs.push(rel)
+        }
+      }
+
+      // Protocol schemas (GraphQL / gRPC / AsyncAPI) live outside docs/ by
+      // convention, so they need collecting explicitly too.
+      for (const rel of await collectSchemaPaths(rootDir, (d) => readdir(d))) {
+        const f = Bun.file(join(rootDir, rel))
+        if (await f.exists()) {
+          sourceFiles.push({ path: rel, content: Buffer.from(await f.arrayBuffer()) })
         }
       }
 
