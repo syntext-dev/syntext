@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test'
-import { collectSpecPaths, collectSchemaPaths } from './deploy'
+import { collectSpecPaths, collectSchemaPaths, collectSpecs } from './deploy'
 import type { SyntextConfig } from '../lib/config'
 
 const ROOT = '/tmp/project'
@@ -120,5 +120,30 @@ describe('collectSchemaPaths', () => {
   it('should tolerate missing directories', async () => {
     const paths = await collectSchemaPaths('/p', async () => { throw new Error('ENOENT') })
     expect(paths).toEqual([])
+  })
+})
+
+describe('collectSpecs — declared vs conventional', () => {
+  it('should not treat the fallback filenames as declared', () => {
+    // Regression shipped in v0.6.3: a missing spec was made fatal, but the
+    // conventional fallback candidates counted as declared — so any project
+    // WITHOUT an OpenAPI spec could no longer deploy at all.
+    const { paths, declared } = collectSpecs({} as SyntextConfig)
+    expect(declared).toBe(false)
+    expect(paths).toEqual(['openapi.json', 'openapi.yaml', 'openapi.yml'])
+  })
+
+  it('should mark config-declared specs as declared', () => {
+    const { paths, declared } = collectSpecs({ openapi: './openapi/a.yaml' })
+    expect(declared).toBe(true)
+    expect(paths).toEqual(['openapi/a.yaml'])
+  })
+
+  it('should mark the array form as declared', () => {
+    expect(collectSpecs({ openapi: [{ path: './a.yaml', prefix: '/a' }] }).declared).toBe(true)
+  })
+
+  it('should treat an empty list as undeclared', () => {
+    expect(collectSpecs({ openapi: [] }).declared).toBe(false)
   })
 })

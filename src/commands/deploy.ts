@@ -21,6 +21,17 @@ import { resolveDocsRoot } from '../lib/resolve-docs-root'
  * stripped, because that is the shape the upload bundle expects.
  */
 export function collectSpecPaths(config: SyntextConfig, _rootDir: string): string[] {
+  return collectSpecs(config).paths
+}
+
+/**
+ * Spec paths plus whether they were declared in config.
+ *
+ * The distinction matters: a spec the config names but that is absent is a
+ * mistake worth failing on, whereas the conventional root filenames are only
+ * candidates — most projects have none of them, and that is normal.
+ */
+export function collectSpecs(config: SyntextConfig): { paths: string[]; declared: boolean } {
   const normalize = (p: string) => p.replace(/^\.\//, '').trim()
   const spec = config.openapi
 
@@ -36,11 +47,12 @@ export function collectSpecPaths(config: SyntextConfig, _rootDir: string): strin
 
   if (declared.length > 0) {
     // De-duplicate: two prefixes may legitimately share one spec file.
-    return [...new Set(declared.map(normalize).filter(Boolean))]
+    return { paths: [...new Set(declared.map(normalize).filter(Boolean))], declared: true }
   }
 
-  // Nothing declared — keep the historical convention.
-  return ['openapi.json', 'openapi.yaml', 'openapi.yml']
+  // Nothing declared — keep the historical convention. These are candidates, so
+  // their absence is expected rather than an error.
+  return { paths: ['openapi.json', 'openapi.yaml', 'openapi.yml'], declared: false }
 }
 
 /**
@@ -206,7 +218,7 @@ export const deployCommand = new Command('deploy')
       // including the array form pointing at a subdirectory. The build then
       // generated no API reference pages and reported success, so a project with
       // specs would deploy with its entire API reference missing.
-      const specPaths = collectSpecPaths(config, rootDir)
+      const { paths: specPaths, declared: specsDeclared } = collectSpecs(config)
       const missingSpecs: string[] = []
       for (const rel of specPaths) {
         const specFile = Bun.file(join(rootDir, rel))
@@ -228,7 +240,7 @@ export const deployCommand = new Command('deploy')
 
       // A declared-but-absent spec means the deploy would drop pages. Fail rather
       // than publish a site quietly missing its API reference.
-      if (missingSpecs.length > 0) {
+      if (specsDeclared && missingSpecs.length > 0) {
         throw new Error(
           `OpenAPI spec(s) declared in your config but not found:\n` +
             missingSpecs.map((m) => `  - ${m}`).join('\n') +
