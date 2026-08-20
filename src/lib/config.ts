@@ -33,6 +33,39 @@ export type ThemeOverrides = {
   }
 }
 
+/**
+ * Structural feature flags — what the site CONTAINS, as opposed to how it is
+ * painted. Resolved server-side; every default reproduces the behaviour that
+ * shipped before the flag existed, so a site is unaffected until it opts out.
+ * Unknown flags and wrong value types become build warnings, not failures.
+ */
+export type SiteFeatures = {
+  /** The "Try it" request playground on API reference pages. Default true. */
+  playground?: boolean
+  /** The "Copy page" control and its open-in-AI menu. Default true. */
+  copyPageActions?: boolean | { guides?: boolean; api?: boolean }
+  /** HTTP method chips beside API nav items. Default true. */
+  sidebarMethodBadges?: boolean
+  /** How the request panel offers languages. Default 'dropdown'. */
+  codeLanguageSelector?: 'dropdown' | 'tabs'
+  /** @deprecated No-op — never controlled anything. Use `codeLanguageSelector`. */
+  codeLanguageTabs?: boolean
+  /** Assistant entry points. Default true. */
+  aiAssistant?: boolean
+  /** API parameter layout. Default 'table'. */
+  parameterStyle?: 'table' | 'rows'
+  /** Trailing endpoint-bar control. Default 'tryIt'. */
+  endpointBarAction?: 'tryIt' | 'copy' | 'none'
+  /** Code block chrome. Default 'pill'. */
+  codeBlockStyle?: 'pill' | 'panel'
+  /** API sidebar groups. Default 'collapsible'. */
+  sidebarStyle?: 'collapsible' | 'flat'
+  /** Where the request/response captions sit. Default 'inline'. */
+  panelLabels?: 'inline' | 'above'
+  /** The panel copy action. Default 'icon'. */
+  copyControlStyle?: 'icon' | 'label'
+}
+
 export type SyntextConfig = {
   name?: string
   projectId?: string
@@ -59,6 +92,8 @@ export type SyntextConfig = {
     body?: string
     mono?: string
   }
+  /** Structural feature flags. See {@link SiteFeatures}. */
+  features?: SiteFeatures
   navigation?: {
     tabs?: string[]
     sidebar?: SidebarOverride[]
