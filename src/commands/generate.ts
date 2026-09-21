@@ -3,7 +3,7 @@ import { join, relative } from 'node:path'
 import { mkdir, writeFile, readFile } from 'node:fs/promises'
 import chalk from 'chalk'
 import ora from 'ora'
-import { parseDirectory, generatePages, resolveEmbeds } from '../annotations'
+import { parseDirectory, generatePages, resolveEmbeds, SOURCE_EXTENSIONS, UNSUPPORTED_EXTENSIONS } from '../annotations'
 import { loadConfig } from '../lib/config'
 
 export const generateCommand = new Command('generate')
@@ -26,23 +26,50 @@ export const generateCommand = new Command('generate')
       // Collect source files
       const srcDirs: string[] = options.src
       const files: string[] = []
-      const extensions = ['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'kt', 'kts', 'php', 'cs']
+      // Shared with `stx check` via SOURCE_EXTENSIONS so the two commands cannot
+      // scan different sets — they used to, and `check` silently skipped C#/Kotlin.
+      const extensions = SOURCE_EXTENSIONS
+      const skippedUnsupported = new Map<string, number>()
 
       // Load .gitignore patterns for filtering
       const ignorePatterns = await loadIgnorePatterns(rootDir)
+
+      // Skip test files, node_modules, and gitignored paths
+      const shouldSkip = (file: string): boolean =>
+        file.includes('.test.') || file.includes('.spec.') || file.includes('node_modules') ||
+        file.includes('__tests__') || file.includes('__mocks__') || isIgnored(file, ignorePatterns)
 
       for (const srcDir of srcDirs) {
         const fullSrcDir = join(rootDir, srcDir)
         for (const ext of extensions) {
           const glob = new Bun.Glob(`**/*.${ext}`)
           for await (const file of glob.scan({ cwd: fullSrcDir })) {
-            // Skip test files, node_modules, and gitignored paths
-            if (file.includes('.test.') || file.includes('.spec.') || file.includes('node_modules')) continue
-            if (file.includes('__tests__') || file.includes('__mocks__')) continue
-            if (isIgnored(file, ignorePatterns)) continue
+            if (shouldSkip(file)) continue
             files.push(join(fullSrcDir, file))
           }
         }
+
+        // Count files a hosted build would parse but this CLI cannot, so we can
+        // say so rather than silently reporting "no annotations found".
+        for (const ext of Object.keys(UNSUPPORTED_EXTENSIONS)) {
+          const label = UNSUPPORTED_EXTENSIONS[ext]
+          const glob = new Bun.Glob(`**/*.${ext}`)
+          for await (const file of glob.scan({ cwd: fullSrcDir })) {
+            if (shouldSkip(file)) continue
+            skippedUnsupported.set(label, (skippedUnsupported.get(label) ?? 0) + 1)
+          }
+        }
+      }
+
+      const unsupportedWarnings = [...skippedUnsupported.entries()].map(
+        ([label, count]) =>
+          `${count} ${label} file${count === 1 ? '' : 's'} skipped: the stx CLI has no local ${label} annotation parser. ` +
+          `A hosted build parses ${label}, so these pages are missing locally.`,
+      )
+      if (unsupportedWarnings.length > 0 && !options.json) {
+        spinner?.stop()
+        for (const w of unsupportedWarnings) console.log(`  ${chalk.yellow('⚠')} ${w}`)
+        spinner?.start()
       }
 
       if (spinner) spinner.text = `Parsing ${files.length} source files...`
@@ -52,7 +79,7 @@ export const generateCommand = new Command('generate')
 
       if (symbols.length === 0) {
         if (options.json) {
-          console.log(JSON.stringify({ files: files.length, symbols: 0, pages: 0 }))
+          console.log(JSON.stringify({ files: files.length, symbols: 0, pages: 0, warnings: unsupportedWarnings }))
         } else {
           spinner?.info(chalk.yellow('No @stx annotations found in source files'))
         }
@@ -72,7 +99,7 @@ export const generateCommand = new Command('generate')
 
       if (options.dryRun) {
         if (options.json) {
-          console.log(JSON.stringify({ files: files.length, symbols: symbols.length, pages: pages.map((p) => ({ slug: p.slug, title: p.title, symbolCount: p.symbols.length })) }))
+          console.log(JSON.stringify({ files: files.length, symbols: symbols.length, warnings: unsupportedWarnings, pages: pages.map((p) => ({ slug: p.slug, title: p.title, symbolCount: p.symbols.length })) }))
         } else {
           spinner?.stop()
           console.log(chalk.bold(`\nDry run — would generate ${pages.length} page(s):\n`))
@@ -116,6 +143,7 @@ export const generateCommand = new Command('generate')
           symbols: symbols.length,
           pages: pages.length,
           embedsResolved: embedCount,
+          warnings: unsupportedWarnings,
         }))
       } else {
         spinner?.succeed(

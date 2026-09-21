@@ -6,6 +6,7 @@ import { parseJava } from './parse-java'
 import { parsePhp } from './parse-php'
 import { parseCSharp } from './parse-csharp'
 import { generatePages } from './generate-mdx'
+import { languageForPath } from './languages'
 import type { AnnotatedSymbol, GeneratedPage, SignatureHash } from './types'
 
 export { parseTypeScript, parseTypeScriptSource } from './parse-typescript'
@@ -18,6 +19,15 @@ export { parseCSharp, parseCSharpSource } from './parse-csharp'
 export { parseAnnotationBlock } from './parse-annotation'
 export { parseConventionalComment, parsePythonDocstring, parseGoDocComment, parseRustDocComment, parseCSharpXmlDoc } from './parse-conventional'
 export { generatePages } from './generate-mdx'
+export {
+  EXTENSION_LANGUAGES,
+  SOURCE_EXTENSIONS,
+  UNSUPPORTED_EXTENSIONS,
+  languageForExtension,
+  languageForPath,
+  unsupportedLanguageForPath,
+} from './languages'
+export type { ParserLanguage } from './languages'
 export type * from './types'
 
 /**
@@ -27,35 +37,32 @@ export async function parseDirectory(files: string[]): Promise<AnnotatedSymbol[]
   const allSymbols: AnnotatedSymbol[] = []
 
   for (const file of files) {
-    const ext = file.split('.').pop()
     let symbols: AnnotatedSymbol[] = []
 
     try {
-      switch (ext) {
-        case 'ts':
-        case 'tsx':
-        case 'js':
-        case 'jsx':
+      // Extension -> parser family comes from the shared map in ./languages, so
+      // this switch cannot drift from the scan lists in `stx check` / `stx generate`.
+      switch (languageForPath(file)) {
+        case 'typescript':
+        case 'javascript':
           symbols = await parseTypeScript(file)
           break
-        case 'py':
+        case 'python':
           symbols = await parsePython(file)
           break
         case 'go':
           symbols = await parseGo(file)
           break
-        case 'rs':
+        case 'rust':
           symbols = await parseRust(file)
           break
         case 'java':
-        case 'kt':
-        case 'kts':
           symbols = await parseJava(file)
           break
         case 'php':
           symbols = await parsePhp(file)
           break
-        case 'cs':
+        case 'csharp':
           symbols = await parseCSharp(file)
           break
       }

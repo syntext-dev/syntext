@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import chalk from 'chalk'
 import ora from 'ora'
 import { parseDirectory, generateSignatureHashes } from '../annotations'
+import { scanSourceFiles } from '../annotations/scan-sources'
 import { detectDrift, findUnannotated, loadStoredHashes, saveHashes, generateDriftReport, formatDriftMarkdown } from '../annotations/drift'
 import type { DriftConfig, DriftIssue } from '../annotations/drift'
 import { loadStyleGuide, validateStyleGuide } from '../annotations/style-guide'
@@ -103,22 +104,12 @@ export const checkCommand = new Command('check')
       spinner && (spinner.text = 'Checking annotation drift...')
 
       const srcDirs: string[] = options.src
-      const sourceFiles: string[] = []
-      const extensions = ['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'php']
+      // Shared with `stx generate` so the two cannot scan different extension
+      // sets — they used to, and C#/Kotlin symbols went undrift-checked.
+      const { files: sourceFiles, warnings: scanWarnings } = await scanSourceFiles(rootDir, srcDirs)
 
-      for (const srcDir of srcDirs) {
-        const fullSrcDir = join(rootDir, srcDir)
-        for (const ext of extensions) {
-          const glob = new Bun.Glob('**/*.' + ext)
-          try {
-            for await (const file of glob.scan({ cwd: fullSrcDir })) {
-              if (file.includes('.test.') || file.includes('.spec.') || file.includes('node_modules')) continue
-              sourceFiles.push(join(fullSrcDir, file))
-            }
-          } catch {
-            // Directory doesn't exist
-          }
-        }
+      for (const warning of scanWarnings) {
+        issues.push({ file: srcDirs.join(', '), type: 'warning', message: warning })
       }
 
       const symbols = await parseDirectory(sourceFiles)
