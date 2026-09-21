@@ -52,7 +52,7 @@ export function findBrokenLinks(content: string, files: string[]): string[] {
 export const checkCommand = new Command('check')
   .description('Validate documentation and detect annotation drift')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
-  .option('-s, --src <paths...>', 'Source directories to scan', ['src'])
+  .option('-s, --src <paths...>', 'Source directories to scan for @stx annotations', ['src'])
   .option('--json', 'Output result as JSON')
   .option('--strict', 'Treat warnings as errors')
   .option('--require-annotations', 'Require @stx on all exported functions')
