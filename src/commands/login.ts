@@ -2,17 +2,50 @@ import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
 import { saveCredentials } from '../lib/credentials'
+import { apiFetch } from '../lib/api'
+import { pollDeviceToken } from '../lib/device-poll'
+import { apiKeysUrl, projectsUrl } from '../lib/dashboard-urls'
+import { configFileExists, loadConfig } from '../lib/config'
+import { resolveDocsRoot } from '../lib/resolve-docs-root'
+
+/** The project id from a syntext.json in `cwd` (or its .syntext/ / .stx/), if any. */
+export async function findLocalProjectId(cwd: string): Promise<string | undefined> {
+  try {
+    const { docsRoot } = await resolveDocsRoot(cwd)
+    if (!(await configFileExists(docsRoot))) return undefined
+    const config = await loadConfig(docsRoot)
+    return typeof config.projectId === 'string' && config.projectId ? config.projectId : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Instructions shown when the device flow is unavailable. */
+export function tokenFallbackLines(projectId: string | undefined): string[] {
+  const where = projectId
+    ? `  1. Open ${chalk.cyan(apiKeysUrl(projectId))}`
+    : `  1. Open ${chalk.cyan(projectsUrl())}, pick your project, then go to Settings → API keys`
+  return [
+    chalk.dim('  Browser login is not available right now. To deploy without it, use a project API key:\n'),
+    where,
+    '  2. Create an API key',
+    `  3. Pass it to commands with ${chalk.bold('--token')}, e.g. ${chalk.bold('stx deploy --token <api-key>')}\n`,
+  ]
+}
 
 export const loginCommand = new Command('login')
-  .description('Authenticate with Syntext')
-  .option('--token <token>', 'API token (skip interactive login)')
+  .description(
+    'Authenticate with Syntext. Opens the browser to approve this device; stops if the request is denied there or the code expires. ' +
+      'The session appears as "stx CLI" in the dashboard\'s sessions list, where it can be revoked.',
+  )
+  .option('--token <token>', 'CLI session token to store instead of browser login (project API keys are passed to deploy/build/dev with --token)')
   .option('--api-url <url>', 'Custom API URL', 'https://api.syntext.dev')
   .action(async (options) => {
     if (options.token) {
       // Non-interactive: validate and save
       const spinner = ora('Verifying token...').start()
       try {
-        const res = await fetch(`${options.apiUrl}/v1/auth/profile`, {
+        const res = await apiFetch(`${options.apiUrl}/v1/auth/profile`, {
           headers: { Authorization: `Bearer ${options.token}` },
         })
         if (!res.ok) {
@@ -33,19 +66,15 @@ export const loginCommand = new Command('login')
 
     const spinner = ora('Starting authentication...').start()
     try {
-      const res = await fetch(`${options.apiUrl}/v1/auth/device-code`, {
+      const res = await apiFetch(`${options.apiUrl}/v1/auth/device-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clientId: 'syntext-cli' }),
       })
 
       if (!res.ok) {
-        // Fallback: prompt for token
         spinner.stop()
-        console.log(chalk.dim('  Device auth not available. Use token-based login:\n'))
-        console.log(`  1. Go to ${chalk.cyan('https://syntext.dev/settings/tokens')}`)
-        console.log(`  2. Create a new CLI token`)
-        console.log(`  3. Run: ${chalk.bold('stx login --token <your-token>')}\n`)
+        for (const line of tokenFallbackLines(await findLocalProjectId(process.cwd()))) console.log(line)
         return
       }
 
@@ -66,36 +95,22 @@ export const loginCommand = new Command('login')
         // Silent fail — user can open manually
       }
 
-      // Poll for completion
       const pollSpinner = ora('Waiting for authorization...').start()
-      const deadline = Date.now() + data.expiresIn * 1000
-      const interval = (data.interval || 5) * 1000
+      const result = await pollDeviceToken({
+        apiUrl: options.apiUrl,
+        deviceCode: data.deviceCode,
+        clientId: 'syntext-cli',
+        intervalSec: data.interval,
+        expiresInSec: data.expiresIn,
+      })
 
-      while (Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, interval))
-
-        const pollRes = await fetch(`${options.apiUrl}/v1/auth/device-token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deviceCode: data.deviceCode, clientId: 'syntext-cli' }),
-        })
-
-        if (pollRes.ok) {
-          const { data: tokenData } = await pollRes.json() as { data: { token: string; user: { name: string; email: string } } }
-          await saveCredentials({ token: tokenData.token, apiUrl: options.apiUrl })
-          pollSpinner.succeed(chalk.green(`Authenticated as ${tokenData.user.name} (${tokenData.user.email})`))
-          return
-        }
-
-        const pollBody = await pollRes.json() as { error?: { code?: string } }
-        if (pollBody.error?.code === 'expired') {
-          pollSpinner.fail(chalk.red('Authentication timed out. Please try again.'))
-          process.exit(1)
-        }
-        // authorization_pending — continue polling
+      if (result.kind === 'approved') {
+        await saveCredentials({ token: result.token, apiUrl: options.apiUrl })
+        pollSpinner.succeed(chalk.green(`Authenticated as ${result.user.name} (${result.user.email})`))
+        return
       }
 
-      pollSpinner.fail(chalk.red('Authentication timed out.'))
+      pollSpinner.fail(chalk.red(result.message))
       process.exit(1)
     } catch (err) {
       spinner.fail(chalk.red('Login failed'))

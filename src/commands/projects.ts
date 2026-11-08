@@ -2,13 +2,20 @@ import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
 import { loadCredentials } from '../lib/credentials'
+import { apiFetch, jsonError } from '../lib/api'
+import { billingUrl } from '../lib/dashboard-urls'
+
+/** The error for a 402/403 on project creation: the plan's project limit. */
+export function planLimitMessage(serverMessage: string): string {
+  return `Plan limit reached: ${serverMessage}. Upgrade at ${billingUrl()}`
+}
 
 export const projectsCommand = new Command('projects')
   .description('Manage Syntext projects')
 
 projectsCommand
   .command('create')
-  .description('Create a new project on Syntext')
+  .description('Create a new project on Syntext (at the plan limit, links to https://syntext.dev/billing)')
   .argument('<name>', 'Project name')
   .option('--json', 'Output result as JSON')
   .action(async (name, options) => {
@@ -22,7 +29,7 @@ projectsCommand
 
       const apiUrl = process.env.SYNTEXT_API_URL ?? 'https://api.syntext.dev'
 
-      const res = await fetch(`${apiUrl}/v1/projects`, {
+      const res = await apiFetch(`${apiUrl}/v1/projects`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${creds.token}`,
@@ -37,7 +44,7 @@ projectsCommand
 
         // Plan gating — surface limit errors clearly
         if (res.status === 403 || res.status === 402) {
-          throw new Error(`Plan limit reached: ${msg}. Upgrade at https://syntext.dev/settings/billing`)
+          throw new Error(planLimitMessage(msg))
         }
         throw new Error(msg)
       }
@@ -62,7 +69,7 @@ projectsCommand
       }
     } catch (err) {
       if (options.json) {
-        console.log(JSON.stringify({ success: false, error: (err as Error).message }))
+        console.log(JSON.stringify(jsonError(err)))
       } else {
         spinner?.fail(chalk.red((err as Error).message))
       }
@@ -85,7 +92,7 @@ projectsCommand
 
       const apiUrl = process.env.SYNTEXT_API_URL ?? 'https://api.syntext.dev'
 
-      const res = await fetch(`${apiUrl}/v1/projects`, {
+      const res = await apiFetch(`${apiUrl}/v1/projects`, {
         headers: { 'Authorization': `Bearer ${creds.token}` },
       })
 
@@ -117,7 +124,7 @@ projectsCommand
       }
     } catch (err) {
       if (options.json) {
-        console.log(JSON.stringify({ success: false, error: (err as Error).message }))
+        console.log(JSON.stringify(jsonError(err)))
       } else {
         spinner?.fail(chalk.red((err as Error).message))
       }
@@ -147,7 +154,7 @@ projectsCommand
 
       const apiUrl = process.env.SYNTEXT_API_URL ?? 'https://api.syntext.dev'
 
-      const res = await fetch(`${apiUrl}/v1/projects/${projectId}`, {
+      const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${creds.token}` },
       })
@@ -164,7 +171,7 @@ projectsCommand
       }
     } catch (err) {
       if (options.json) {
-        console.log(JSON.stringify({ success: false, error: (err as Error).message }))
+        console.log(JSON.stringify(jsonError(err)))
       } else {
         spinner?.fail(chalk.red((err as Error).message))
       }

@@ -36,17 +36,36 @@ bun test    # run tests
 | `stx check` | Validate annotations, links, frontmatter |
 | `stx generate` | Generate API reference pages from `@stx` source annotations |
 | `stx migrate` | Migrate from other platforms (Mintlify, ReadMe, Docusaurus, GitBook) |
-| `stx login` | Authenticate via browser (device flow) |
+| `stx login` | Authenticate via browser (device flow); stops if denied in the browser |
 | `stx logout` | Clear stored credentials |
 
 ## Authentication
 
 `stx login` opens your browser for authentication. If you're not logged in to syntext.dev, you'll sign up or log in first, then authorize the CLI automatically. No codes to copy.
 
-For CI environments, use a token directly:
+- If you click **Deny** on the browser consent screen, `stx login` stops straight away with "Sign-in was denied in the browser." and exits non-zero.
+- If the sign-in code expires or is removed before you approve it, `stx login` stops and asks you to run it again.
+- If browser login is unavailable, `stx login` explains how to use a project API key instead, linking your project's **Settings → API keys** page (`https://syntext.dev/projects/<project-id>/settings/api-keys`) when run inside a connected docs directory, or the projects list (`https://syntext.dev/projects`) otherwise.
+
+### Sessions
+
+Each `stx login` is a session listed in the dashboard's sessions list as **stx CLI · <OS>** with the CLI version. The CLI sends `User-Agent: stx/<version> (<platform>; <arch>)` on every request so the session can be named.
+
+If a session is revoked (from the dashboard, by a password change, or by signing out everywhere), the next command that calls the API fails with a message to run `stx login` again, and the stored credentials in `~/.syntext/credentials.json` are removed. With `--json`, the error includes `"code": "session_revoked"`. A token passed with `--token` is reported the same way but does not remove your stored login.
+
+### CI
+
+For CI, create an API key in the project's **Settings → API keys** and pass it to the command:
 ```bash
-stx login --token <your-token>
+stx deploy --token <api-key>
+stx build --token <api-key>
 ```
+
+`stx login --token <token>` stores a CLI login token (it is checked against your profile, so it does not accept project API keys).
+
+### Plan limits
+
+When `stx projects create` hits your plan's project limit, the error links to **Billing** at `https://syntext.dev/billing`.
 
 ## Configuration
 
@@ -69,6 +88,8 @@ src/
 │   ├── check.ts
 │   ├── generate.ts
 │   ├── migrate.ts
+│   ├── connect.ts
+│   ├── projects.ts
 │   ├── login.ts
 │   └── logout.ts
 ├── annotations/          # @stx annotation parser (multi-language)
@@ -91,6 +112,9 @@ src/
 └── lib/                  # Internal utilities
     ├── config.ts         # Config loader (json/yaml)
     ├── credentials.ts    # Token storage (~/.syntext/)
+    ├── api.ts            # Backend fetch: User-Agent, session_revoked handling
+    ├── device-poll.ts    # `stx login` device-token polling
+    ├── dashboard-urls.ts # Links into the dashboard (billing, API keys)
     ├── ci-templates.ts   # CI/CD scaffold generators
     └── resolve-docs-root.ts
 
