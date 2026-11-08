@@ -5,6 +5,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import { loadConfig, configFileExists } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
+import { apiFetch, jsonError } from '../lib/api'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
 
 type ExportManifest = {
@@ -42,7 +43,7 @@ export const buildCommand = new Command('build')
   .description('Build documentation on the Syntext backend and download the static site for self-hosting')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
   .option('-o, --output <dir>', 'Output directory for the built site', 'dist')
-  .option('--token <token>', 'Auth token (for CI, overrides login)')
+  .option('--token <token>', 'Login token or project API key (for CI, overrides stx login)')
   .option('--json', 'Output result as JSON')
   .action(async (options) => {
     const baseDir = resolve(process.cwd(), options.dir)
@@ -127,7 +128,7 @@ export const buildCommand = new Command('build')
         formData.append('paths', file.path)
       }
 
-      const res = await fetch(`${apiUrl}/v1/projects/${projectId}/deploy`, {
+      const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}/deploy`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
@@ -151,7 +152,7 @@ export const buildCommand = new Command('build')
       // Download and extract the export bundle
       if (spinner) spinner.text = 'Downloading built site...'
 
-      const bundleRes = await fetch(`${apiUrl}/v1/projects/${projectId}/builds/${data.buildId}/export`, {
+      const bundleRes = await apiFetch(`${apiUrl}/v1/projects/${projectId}/builds/${data.buildId}/export`, {
         headers: { 'Authorization': `Bearer ${token}` },
       })
 
@@ -187,7 +188,7 @@ export const buildCommand = new Command('build')
     } catch (err) {
       if (process.env.STX_DEBUG) console.error((err as Error).stack)
       if (options.json) {
-        console.log(JSON.stringify({ success: false, error: (err as Error).message }))
+        console.log(JSON.stringify(jsonError(err)))
       } else {
         spinner?.fail(chalk.red('Build failed'))
         console.error(`\n  ${(err as Error).message}\n`)
@@ -208,7 +209,7 @@ async function waitForBuild(
   const start = Date.now()
 
   while (Date.now() - start < maxWait) {
-    const res = await fetch(`${apiUrl}/v1/projects/${projectId}/builds/${buildId}`, {
+    const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}/builds/${buildId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     })
 

@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import chalk from 'chalk'
 import ora from 'ora'
 import { loadCredentials } from '../lib/credentials'
+import { apiFetch, jsonError } from '../lib/api'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
 
 export const connectCommand = new Command('connect')
@@ -28,7 +29,7 @@ export const connectCommand = new Command('connect')
       // Verify project exists and user has access
       if (spinner) spinner.text = 'Verifying project access...'
 
-      const res = await fetch(`${apiUrl}/v1/projects/${projectId}`, {
+      const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}`, {
         headers: { 'Authorization': `Bearer ${creds.token}` },
       })
 
@@ -101,7 +102,7 @@ export const connectCommand = new Command('connect')
       }
     } catch (err) {
       if (options.json) {
-        console.log(JSON.stringify({ success: false, error: (err as Error).message }))
+        console.log(JSON.stringify(jsonError(err)))
       } else {
         spinner?.fail(chalk.red((err as Error).message))
       }

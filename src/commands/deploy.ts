@@ -6,6 +6,7 @@ import ora from 'ora'
 import { loadConfig, configFileExists } from '../lib/config'
 import type { SyntextConfig } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
+import { apiFetch, jsonError } from '../lib/api'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
 
 /**
@@ -103,7 +104,7 @@ export const deployCommand = new Command('deploy')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
   .option('--preview', 'Deploy as a preview (non-production)')
   .option('--branch <branch>', 'Branch name for preview deploys')
-  .option('--token <token>', 'Auth token (for CI, overrides login)')
+  .option('--token <token>', 'Login token or project API key (for CI, overrides stx login)')
   .option('--json', 'Output result as JSON')
   .option('--promote [buildId]', 'Promote a preview deployment to production')
   .action(async (options) => {
@@ -140,7 +141,7 @@ export const deployCommand = new Command('deploy')
           promoteBody.buildId = options.promote
         }
 
-        const res = await fetch(`${apiUrl}/v1/projects/${projectId}/deploy/promote`, {
+        const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}/deploy/promote`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -266,7 +267,7 @@ export const deployCommand = new Command('deploy')
         formData.append('paths', file.path)
       }
 
-      const res = await fetch(`${apiUrl}/v1/projects/${projectId}/deploy`, {
+      const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}/deploy`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -315,7 +316,7 @@ export const deployCommand = new Command('deploy')
       }
     } catch (err) {
       if (options.json) {
-        console.log(JSON.stringify({ success: false, error: (err as Error).message }))
+        console.log(JSON.stringify(jsonError(err)))
       } else {
         spinner?.fail(chalk.red('Deploy failed'))
         console.error(`\n  ${(err as Error).message}\n`)
@@ -336,7 +337,7 @@ async function waitForBuild(
   const start = Date.now()
 
   while (Date.now() - start < maxWait) {
-    const res = await fetch(`${apiUrl}/v1/projects/${projectId}/builds/${buildId}`, {
+    const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}/builds/${buildId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     })
 

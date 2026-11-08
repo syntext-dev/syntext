@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
-import { mkdtemp, rm, readFile } from 'node:fs/promises'
+import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test'
+import { mkdtemp, rm, readFile, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { extractExportBundle } from './build'
+import * as credentials from '../lib/credentials'
+import { userAgent } from '../lib/api'
+import { extractExportBundle, buildCommand } from './build'
 
 function makeBundle(files: Array<{ path: string; content: Buffer | string; contentType?: string }>): Uint8Array {
   const manifest = JSON.stringify({
@@ -59,5 +61,70 @@ describe('BuildCommand', () => {
     const bundle = makeBundle([{ path: '../evil.html', content: 'nope' }])
 
     await expect(extractExportBundle(bundle, outDir)).rejects.toThrow('Unsafe path')
+  })
+})
+
+describe('build session handling', () => {
+  const realFetch = globalThis.fetch
+  let dir: string
+  let output: string[]
+  let seen: RequestInit | undefined
+  let spies: Array<{ mockRestore: () => void }>
+
+  class ExitError extends Error {
+    constructor(readonly code: number | undefined) {
+      super(`exit ${code}`)
+    }
+  }
+
+  beforeEach(async () => {
+    output = []
+    seen = undefined
+    dir = await mkdtemp(join(tmpdir(), 'stx-build-revoked-'))
+    await writeFile(join(dir, 'syntext.json'), JSON.stringify({ name: 'x', projectId: 'p1' }))
+    await mkdir(join(dir, 'docs'))
+    await writeFile(join(dir, 'docs', 'index.mdx'), '# Hi')
+    globalThis.fetch = Object.assign(
+      async (_input: string | URL | Request, init?: RequestInit) => {
+        seen = init
+        return new Response(JSON.stringify({ error: { code: 'session_revoked', message: 'signed out' } }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      { preconnect: realFetch.preconnect },
+    ) as typeof fetch
+    spies = [
+      spyOn(process, 'cwd').mockReturnValue('/'),
+      spyOn(credentials, 'loadCredentials').mockResolvedValue({ token: 'tok' }),
+      spyOn(credentials, 'clearCredentials').mockResolvedValue(undefined),
+      spyOn(process, 'exit').mockImplementation(((code?: number) => {
+        throw new ExitError(code)
+      }) as typeof process.exit),
+      spyOn(console, 'log').mockImplementation((...a: unknown[]) => {
+        output.push(a.map(String).join(' '))
+      }),
+    ]
+  })
+
+  afterEach(async () => {
+    for (const s of spies) s.mockRestore()
+    globalThis.fetch = realFetch
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('should clear credentials and report session_revoked with --json', async () => {
+    const err = await buildCommand.parseAsync(['--dir', dir, '--json'], { from: 'user' }).catch((e) => e)
+    expect(err).toBeInstanceOf(ExitError)
+    expect((err as ExitError).code).toBe(1)
+    const body = JSON.parse(output.join('')) as { success: boolean; code: string; error: string }
+    expect(body).toMatchObject({ success: false, code: 'session_revoked' })
+    expect(body.error).toContain('stx login')
+    expect(credentials.clearCredentials).toHaveBeenCalledTimes(1)
+    expect(new Headers(seen?.headers).get('User-Agent')).toBe(userAgent())
+  })
+
+  it('should describe --token as a login token or project API key', () => {
+    expect(buildCommand.helpInformation()).toContain('project API key')
   })
 })

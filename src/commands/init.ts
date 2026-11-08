@@ -5,6 +5,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import { generateCITemplate, generateDockerfile } from '../lib/ci-templates'
 import { loadCredentials } from '../lib/credentials'
+import { apiFetch, isSessionRevokedError } from '../lib/api'
 
 export const initCommand = new Command('init')
   .description('Initialize a new Syntext documentation project')
@@ -82,8 +83,20 @@ export const initCommand = new Command('init')
           console.log(`  ${chalk.dim('Run')} stx login ${chalk.dim('then')} stx projects create ${projectName}`)
         } else {
           spinner.text = 'Creating project on Syntext...'
-          const projectId = await createRemoteProject(projectName, creds.token)
-          if (projectId) {
+          let projectId: string | null = null
+          let revokedMessage: string | null = null
+          try {
+            projectId = await createRemoteProject(projectName, creds.token)
+          } catch (err) {
+            if (!isSessionRevokedError(err)) throw err
+            revokedMessage = err.message
+          }
+          if (revokedMessage) {
+            spinner.succeed(chalk.green('Syntext project scaffolded!'))
+            console.log('')
+            console.log(`  ${chalk.yellow(revokedMessage)}`)
+            console.log(`  ${chalk.dim('Then run')} stx projects create ${projectName}`)
+          } else if (projectId) {
             const configPath = join(targetDir, 'syntext.json')
             const config = JSON.parse(await readFile(configPath, 'utf-8'))
             config.projectId = projectId
@@ -256,11 +269,15 @@ async function appendGitignore(targetDir: string): Promise<void> {
   }
 }
 
-async function createRemoteProject(name: string, token: string): Promise<string | null> {
+/**
+ * Creates the project on the backend. Returns null on any failure except a
+ * revoked session, which is rethrown so the caller can tell the user to sign in.
+ */
+export async function createRemoteProject(name: string, token: string): Promise<string | null> {
   const apiUrl = process.env.SYNTEXT_API_URL ?? 'https://api.syntext.dev'
 
   try {
-    const res = await fetch(`${apiUrl}/v1/projects`, {
+    const res = await apiFetch(`${apiUrl}/v1/projects`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -273,7 +290,8 @@ async function createRemoteProject(name: string, token: string): Promise<string 
 
     const { data } = await res.json() as { data: { id: string } }
     return data.id
-  } catch {
+  } catch (err) {
+    if (isSessionRevokedError(err)) throw err
     return null
   }
 }

@@ -5,13 +5,14 @@ import chalk from 'chalk'
 import ora from 'ora'
 import { loadConfig, configFileExists } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
+import { apiFetch, isSessionRevokedError } from '../lib/api'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
 
 export const devCommand = new Command('dev')
   .description('Watch for changes and auto-deploy previews')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
   .option('--branch <branch>', 'Branch name for preview', 'dev')
-  .option('--token <token>', 'Auth token (overrides login)')
+  .option('--token <token>', 'Login token or project API key (overrides stx login)')
   .action(async (options) => {
     const baseDir = join(process.cwd(), options.dir)
     const { docsRoot: rootDir, nested } = await resolveDocsRoot(baseDir)
@@ -46,7 +47,7 @@ export const devCommand = new Command('dev')
     console.log(chalk.dim(`Watching ${displayDir} for changes...`))
     console.log(chalk.dim(`Branch: ${branch}\n`))
 
-    let previewUrl = await deployPreview(rootDir, apiUrl, token, projectId, branch)
+    let previewUrl = await deployPreview(rootDir, apiUrl, token, projectId, branch).catch(exitIfSessionRevoked)
     if (previewUrl) {
       console.log(`\n  ${chalk.bold('Preview:')} ${chalk.cyan(previewUrl)}\n`)
     }
@@ -63,7 +64,7 @@ export const devCommand = new Command('dev')
     const triggerDeploy = () => {
       if (debounceTimer) clearTimeout(debounceTimer)
       debounceTimer = setTimeout(async () => {
-        const url = await deployPreview(rootDir, apiUrl, token, projectId, branch)
+        const url = await deployPreview(rootDir, apiUrl, token, projectId, branch).catch(exitIfSessionRevoked)
         if (url && url !== previewUrl) {
           previewUrl = url
           console.log(`\n  ${chalk.bold('Preview:')} ${chalk.cyan(previewUrl)}\n`)
@@ -95,7 +96,20 @@ export const devCommand = new Command('dev')
     await new Promise(() => {})
   })
 
-async function deployPreview(
+/** A revoked session cannot recover while watching: say so and stop. Other errors propagate. */
+export function exitIfSessionRevoked(err: unknown): never {
+  if (isSessionRevokedError(err)) {
+    console.error(chalk.red(`\n  ${err.message}`))
+    process.exit(1)
+  }
+  throw err
+}
+
+/**
+ * Uploads the docs as a preview build and waits for it. Returns the preview URL,
+ * or null on failure (already reported). A revoked session is rethrown.
+ */
+export async function deployPreview(
   rootDir: string,
   apiUrl: string,
   token: string,
@@ -176,7 +190,7 @@ async function deployPreview(
       formData.append('paths', file.path)
     }
 
-    const res = await fetch(`${apiUrl}/v1/projects/${projectId}/deploy`, {
+    const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}/deploy`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData,
@@ -200,7 +214,7 @@ async function deployPreview(
     const start = Date.now()
 
     while (Date.now() - start < maxWait) {
-      const buildRes = await fetch(`${apiUrl}/v1/projects/${projectId}/builds/${data.buildId}`, {
+      const buildRes = await apiFetch(`${apiUrl}/v1/projects/${projectId}/builds/${data.buildId}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       })
 
@@ -239,6 +253,7 @@ async function deployPreview(
     return null
   } catch (err) {
     spinner.fail(chalk.red((err as Error).message))
+    if (isSessionRevokedError(err)) throw err
     return null
   }
 }
