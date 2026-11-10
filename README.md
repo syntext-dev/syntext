@@ -45,7 +45,7 @@ bun test    # run tests
 
 - If you click **Deny** on the browser consent screen, `stx login` stops straight away with "Sign-in was denied in the browser." and exits non-zero.
 - If the sign-in code expires or is removed before you approve it, `stx login` stops and asks you to run it again.
-- If browser login is unavailable, `stx login` explains how to use a project API key instead, linking your project's **Settings → API keys** page (`https://syntext.dev/projects/<project-id>/settings/api-keys`) when run inside a connected docs directory, or the projects list (`https://syntext.dev/projects`) otherwise.
+- If browser login is unavailable, `stx login` explains how to use a project API key instead, linking your project's **Settings → API keys** page (`https://app.syntext.dev/projects/<project-id>/settings/api-keys`) when run inside a connected docs directory, or the projects list (`https://app.syntext.dev/projects`) otherwise.
 
 ### Sessions
 
@@ -65,7 +65,7 @@ stx build --token <api-key>
 
 ### Plan limits
 
-When `stx projects create` hits your plan's project limit, the error links to **Billing** at `https://syntext.dev/billing`.
+When `stx projects create` hits your plan's project limit, the error links to **Billing** at `https://app.syntext.dev/billing`.
 
 ## Configuration
 

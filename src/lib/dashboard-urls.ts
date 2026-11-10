@@ -1,5 +1,5 @@
 /** Links into the Syntext dashboard (Dashboard 2.0 routes in apps/web). */
-export const DASHBOARD_URL = 'https://syntext.dev'
+export const DASHBOARD_URL = 'https://app.syntext.dev'
 
 /** Plans and invoices for the workspace. */
 export function billingUrl(): string {

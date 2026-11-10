@@ -10,13 +10,13 @@ describe('login', () => {
   describe('tokenFallbackLines', () => {
     it('should link the project API-keys page when a project id is known', () => {
       const text = strip(tokenFallbackLines('proj_42').join('\n'))
-      expect(text).toContain('https://syntext.dev/projects/proj_42/settings/api-keys')
+      expect(text).toContain('https://app.syntext.dev/projects/proj_42/settings/api-keys')
       expect(text).not.toContain('/settings/tokens')
     })
 
     it('should link the projects list and say where API keys live when no project id is known', () => {
       const text = strip(tokenFallbackLines(undefined).join('\n'))
-      expect(text).toContain('https://syntext.dev/projects')
+      expect(text).toContain('https://app.syntext.dev/projects')
       expect(text).toContain('Settings → API keys')
       expect(text).not.toContain('/settings/tokens')
     })

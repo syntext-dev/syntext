@@ -61,7 +61,7 @@ describe('projects', () => {
 
   it('should link the new billing route on a plan limit', () => {
     expect(planLimitMessage('Free plan allows 1 project')).toBe(
-      'Plan limit reached: Free plan allows 1 project. Upgrade at https://syntext.dev/billing',
+      'Plan limit reached: Free plan allows 1 project. Upgrade at https://app.syntext.dev/billing',
     )
     expect(planLimitMessage('x')).not.toContain('/settings/billing')
   })
@@ -72,7 +72,7 @@ describe('projects', () => {
     expect(exitCode).toBe(1)
     expect(JSON.parse(out)).toEqual({
       success: false,
-      error: 'Plan limit reached: Project limit reached. Upgrade at https://syntext.dev/billing',
+      error: 'Plan limit reached: Project limit reached. Upgrade at https://app.syntext.dev/billing',
     })
   })
 
@@ -111,6 +111,6 @@ describe('projects', () => {
 
   it('should mention billing in the create help', () => {
     const create = projectsCommand.commands.find((c) => c.name() === 'create')
-    expect(strip(create?.helpInformation() ?? '')).toContain('https://syntext.dev/billing')
+    expect(strip(create?.helpInformation() ?? '')).toContain('https://app.syntext.dev/billing')
   })
 })

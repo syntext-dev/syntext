@@ -15,7 +15,7 @@ export const projectsCommand = new Command('projects')
 
 projectsCommand
   .command('create')
-  .description('Create a new project on Syntext (at the plan limit, links to https://syntext.dev/billing)')
+  .description('Create a new project on Syntext (at the plan limit, links to https://app.syntext.dev/billing)')
   .argument('<name>', 'Project name')
   .option('--json', 'Output result as JSON')
   .action(async (name, options) => {
