@@ -8,6 +8,10 @@ describe('FRONTMATTER_KEYS', () => {
     }
   })
 
+  it('should know the v2 docs home key', () => {
+    expect(findFrontmatterKey('home')?.type).toBe('object')
+  })
+
   it('should list each key once', () => {
     const keys = FRONTMATTER_KEYS.map((k) => k.key)
     expect(new Set(keys).size).toBe(keys.length)

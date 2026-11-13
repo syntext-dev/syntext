@@ -14,6 +14,12 @@ describe('checkSyntax', () => {
     expect(r.usages).toEqual([])
   })
 
+  it('should accept the home frontmatter key on the index page without a "did you mean"', () => {
+    const page = '---\ntitle: Home\nhome:\n  hero:\n    title: Acme docs\n  blocks:\n    - type: quickstart\n---\n'
+    const r = checkSyntax({ config: config('{ "name": "A", "theme": "paper" }'), pages: [{ file: 'docs/index.mdx', source: page }] })
+    expect(r.issues).toEqual([])
+  })
+
   it('should warn about deprecated config keys with the line and the backend wording', () => {
     const r = checkSyntax({ config: config('{\n  "colors": {\n    "accent": "#2AC3DE"\n  }\n}\n'), pages: [] })
     expect(r.issues).toEqual([{
