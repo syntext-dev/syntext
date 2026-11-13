@@ -1,6 +1,8 @@
 # stx
 
-The `stx` command-line tool for authoring, building, and deploying Syntext documentation. Compiled to a single binary via Bun.
+Write, preview and publish Syntext docs from your terminal.
+
+`stx` is the Syntext command-line tool, compiled to a single binary via Bun.
 
 **The CLI does not render documentation.** `stx dev`, `stx build` and `stx deploy` all upload your source files and compile them on the Syntext backend; `build` downloads the finished static site for self-hosting. There is deliberately no local MDX compiler, so a local preview and a hosted build cannot disagree about rendered output.
 

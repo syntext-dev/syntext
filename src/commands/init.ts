@@ -26,6 +26,9 @@ With --preset, the site starts on doc engine v2 and docs/index.mdx is a page bui
 from the home components (<Hero>, <SectionCards>, <LatestUpdates>) with layout: wide.
 Without it, the site starts on the default theme and index.mdx is plain Markdown.
 
+No API reference page is written. To add one, run stx generate --src . to write
+pages from @stx annotations, or add an OpenAPI file under "openapi" in syntext.json.
+
 Examples:
   $ stx init my-docs                     Default theme, Markdown home page
   $ stx init my-docs --preset paper      Doc engine v2, Paper preset, home components`)
@@ -39,7 +42,6 @@ Examples:
 
       // syntext.json, the starter pages, and the folders they need
       await mkdir(join(targetDir, 'public'), { recursive: true })
-      if (!preset) await mkdir(join(targetDir, 'docs/api'), { recursive: true })
       for (const [path, content] of Object.entries(starterFiles(projectName, { preset }))) {
         await mkdir(join(targetDir, path, '..'), { recursive: true })
         await writeFile(join(targetDir, path), content)
@@ -152,10 +154,7 @@ export function generateConfig(name: string, opts: { preset?: PresetName } = {})
     // A preset name as the theme switches the site to doc engine v2.
     theme: opts.preset ?? 'default',
     navigation: opts.preset
-      ? [
-          { group: 'Getting Started', pages: ['index', 'quickstart'] },
-          { group: 'API reference', pages: ['api-reference/index'] },
-        ]
+      ? [{ group: 'Getting Started', pages: ['index', 'quickstart'] }]
       : [
           {
             group: 'Getting Started',
@@ -176,16 +175,16 @@ export function parsePreset(value: unknown): PresetName | undefined {
 /**
  * Every file `stx init` writes besides CI and Docker files, by path. A v2 site
  * (`preset`) gets the backend's starter index.mdx (lib/starter-index.ts: home
- * components, `layout: wide`) and the two pages its hero links to; a v1 site
- * keeps the plain Markdown home.
+ * components, `layout: wide`) and the quickstart its hero links to; a v1 site
+ * keeps the plain Markdown home. Neither gets an API reference page: not every
+ * docs site documents an API, and `stx generate` or an `openapi` entry adds one.
  */
 export function starterFiles(name: string, opts: { preset?: PresetName } = {}): Record<string, string> {
   if (opts.preset) {
     return {
       'syntext.json': generateConfig(name, opts),
       'docs/index.mdx': starterIndexMdx({ title: name }),
-      'docs/quickstart.mdx': generateGettingStarted(name).replace('title: Getting Started', 'title: Quickstart').replace('# Getting Started', '# Quickstart').replaceAll('](/api)', '](/api-reference)'),
-      'docs/api-reference/index.mdx': generateApiReference(name),
+      'docs/quickstart.mdx': generateGettingStarted(name).replace('title: Getting Started', 'title: Quickstart').replace('# Getting Started', '# Quickstart'),
     }
   }
   return {
@@ -195,87 +194,61 @@ export function starterFiles(name: string, opts: { preset?: PresetName } = {}): 
   }
 }
 
-function generateApiReference(name: string): string {
-  return `---
-title: API reference
-description: The ${name} API
----
-
-# API reference
-
-Run \`stx generate --src .\` to write reference pages from the \`@stx\` annotations in your source code, or add an OpenAPI file under \`openapi\` in syntext.json.
-`
-}
-
 function generateIndexPage(name: string): string {
   return `---
 title: Welcome to ${name}
-description: Get started with ${name} documentation
+description: Get started with ${name}
 ---
 
 # Welcome to ${name}
 
-Your documentation is ready. Start writing guides, tutorials, and API references — everything stays in sync with your codebase.
+Your docs site is ready. Replace this page with an introduction: what ${name} is, who it is for, and where to start.
 
-## Quick Links
+## Quick links
 
-- [Getting Started](/guides/getting-started) — Set up and configure your project
-- [API Reference](/api) — Auto-generated from your source code
+- [Getting started](/guides/getting-started) — The first steps for new readers
 
-## What's Next
+## What's next
 
-1. **Write documentation** — Add \`.mdx\` files to \`docs/\`
-2. **Generate API docs** — Run \`stx generate --src .\` to parse code annotations
-3. **Deploy** — Run \`stx deploy\` to publish to your live site
+1. **Write pages** — Add \`.mdx\` files to \`docs/\` and list them under \`navigation\` in syntext.json
+2. **Preview** — Run \`stx dev\` to see your changes as you write
+3. **Publish** — Run \`stx deploy\` to put your site live
 
-> Edit this page at \`docs/index.mdx\`. Changes appear instantly in dev mode.
+> Edit this page at \`docs/index.mdx\`.
 `
 }
 
 function generateGettingStarted(name: string): string {
   return `---
 title: Getting Started
-description: Learn how to get started with ${name}
+description: The first steps with ${name}
 ---
 
 # Getting Started
 
-Welcome to ${name}. This guide walks you through setup and first use.
+Welcome to ${name}. This page walks new readers through their first steps.
 
-## Installation
+## Install
 
-\`\`\`bash
-# Install via npm
-npm install ${name}
+Tell readers how to get ${name}: a sign-up link, a download, or an install command.
 
-# Or with bun
-bun add ${name}
-\`\`\`
+## First steps
 
-## Quick Start
+### 1. Set up
 
-### 1. Install the package
+Describe what readers do first, such as creating an account or changing a setting.
 
-Run the installation command above for your package manager.
+### 2. Try it
 
-### 2. Configure your project
+Walk through one small task from start to finish.
 
-Create a configuration file in your project root:
+### 3. Keep going
 
-\`\`\`json
-{
-  "name": "${name}",
-  "version": "1.0.0"
-}
-\`\`\`
-
-### 3. Start building
-
-You're ready to go! Check the [API Reference](/api) for detailed documentation.
+Link to the pages that come next.
 
 ---
 
-> **Need help?** Open an issue on GitHub or check the FAQ.
+> **Need help?** Say where readers can ask, such as a support email or a community forum.
 `
 }
 
