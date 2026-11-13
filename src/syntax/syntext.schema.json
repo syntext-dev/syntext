@@ -1,0 +1,3004 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://syntext.dev/schema/syntext.json",
+  "title": "syntext.json",
+  "description": "Syntext site configuration (syntext.json, syntext.yml or syntext.yaml).",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "JSON Schema URL for editor support: https://syntext.dev/schema/syntext.json",
+      "type": "string"
+    },
+    "projectId": {
+      "description": "Project id, written by stx init. Read by the CLI only.",
+      "type": "string"
+    },
+    "name": {
+      "description": "Site name in the header, titles and llms.txt.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Fallback page meta description.",
+      "type": "string"
+    },
+    "logo": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "light": {
+              "type": "string"
+            },
+            "dark": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "mark",
+                "wordmark"
+              ]
+            },
+            "suffix": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "favicon": {
+      "description": "Favicon URL. Only the string form is used.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "github": {
+      "description": "GitHub repository URL for the header link.",
+      "type": "string"
+    },
+    "socialLinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "url"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "seo": {
+      "type": "object",
+      "properties": {
+        "ogImage": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ogImage": {
+      "description": "Deprecated: use seo.ogImage.",
+      "type": "string"
+    },
+    "locale": {
+      "description": "BCP-47 language tag of the site, e.g. en or ar-EG.",
+      "type": "string"
+    },
+    "language": {
+      "description": "Deprecated: use locale.",
+      "type": "string"
+    },
+    "i18n": {
+      "type": "object",
+      "properties": {
+        "defaultLocale": {
+          "type": "string"
+        },
+        "locales": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "locale": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "locale"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "label": {
+          "type": "string"
+        },
+        "sourceLocale": {
+          "description": "Deprecated: use defaultLocale.",
+          "type": "string"
+        },
+        "locale": {
+          "description": "Deprecated: use defaultLocale.",
+          "type": "string"
+        },
+        "targetLocales": {
+          "description": "Deprecated: use locales.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "locale": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "locale"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "theme": {
+      "description": "Preset (workbench, paper, console, atlas, plain, orbit, grid, margin), a v1 theme (default, gravv), or an organization theme \"@org/slug\".",
+      "type": "string"
+    },
+    "appearance": {
+      "description": "Doc engine v2 appearance: overrides the preset named by theme.",
+      "type": "object",
+      "properties": {
+        "accent": {
+          "description": "One accent colour, or one per mode.",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "light": {
+                  "type": "string",
+                  "pattern": "^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                },
+                "dark": {
+                  "type": "string",
+                  "pattern": "^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "light",
+            "dark",
+            "system"
+          ]
+        },
+        "toggle": {
+          "description": "Readers can switch light and dark.",
+          "type": "boolean"
+        },
+        "fonts": {
+          "type": "object",
+          "properties": {
+            "heading": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "mono": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "size": {
+          "description": "Body text size in px.",
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 15
+            },
+            {
+              "type": "number",
+              "const": 16
+            },
+            {
+              "type": "number",
+              "const": 17
+            }
+          ]
+        },
+        "density": {
+          "type": "string",
+          "enum": [
+            "comfortable",
+            "compact"
+          ]
+        },
+        "radius": {
+          "type": "string",
+          "enum": [
+            "none",
+            "small",
+            "medium",
+            "large"
+          ]
+        },
+        "width": {
+          "type": "string",
+          "enum": [
+            "contained",
+            "full"
+          ]
+        },
+        "layout": {
+          "type": "object",
+          "properties": {
+            "shell": {
+              "type": "string",
+              "enum": [
+                "bordered",
+                "sheet",
+                "enterprise",
+                "minimal",
+                "floating",
+                "grid",
+                "focus"
+              ]
+            },
+            "header": {
+              "type": "string",
+              "enum": [
+                "command",
+                "pill",
+                "tabs",
+                "mega",
+                "simple",
+                "island",
+                "index",
+                "path"
+              ]
+            },
+            "nav": {
+              "type": "string",
+              "enum": [
+                "tree",
+                "pills",
+                "mono",
+                "chevrons",
+                "plain",
+                "dock",
+                "chapters",
+                "overlay",
+                "collapsible"
+              ]
+            },
+            "toc": {
+              "type": "string",
+              "enum": [
+                "progress",
+                "pills",
+                "dots",
+                "rule",
+                "plain",
+                "float",
+                "ruler",
+                "ticks"
+              ]
+            },
+            "groups": {
+              "type": "string",
+              "enum": [
+                "collapsible",
+                "open"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "components": {
+          "type": "object",
+          "properties": {
+            "callout": {
+              "type": "string",
+              "enum": [
+                "labelcol",
+                "tag",
+                "strip",
+                "box",
+                "soft",
+                "float",
+                "cell",
+                "sidenote"
+              ]
+            },
+            "steps": {
+              "type": "string",
+              "enum": [
+                "rail",
+                "cards",
+                "prompt",
+                "procedure",
+                "list",
+                "stack",
+                "cells",
+                "margin"
+              ]
+            },
+            "code": {
+              "type": "string",
+              "enum": [
+                "dark",
+                "light",
+                "inset",
+                "navy",
+                "plain",
+                "float",
+                "cell",
+                "bleed"
+              ]
+            },
+            "cards": {
+              "type": "string",
+              "enum": [
+                "bordered",
+                "tile",
+                "outline",
+                "accent",
+                "plain",
+                "bento",
+                "cell",
+                "rows"
+              ]
+            },
+            "tabs": {
+              "type": "string",
+              "enum": [
+                "underline",
+                "pill",
+                "mono",
+                "boxed",
+                "text",
+                "segment",
+                "cells"
+              ]
+            },
+            "api": {
+              "type": "string",
+              "enum": [
+                "spec",
+                "card",
+                "term",
+                "boxed",
+                "plain",
+                "split",
+                "grid",
+                "stacked"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "illustrations": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "themeOverrides": {
+      "description": "Exact token values, applied after the preset and appearance.",
+      "type": "object",
+      "properties": {
+        "colors": {
+          "type": "object",
+          "properties": {
+            "light": {
+              "type": "object",
+              "properties": {
+                "content-primary": {
+                  "type": "string"
+                },
+                "content-secondary": {
+                  "type": "string"
+                },
+                "content-muted": {
+                  "type": "string"
+                },
+                "content-inverse": {
+                  "type": "string"
+                },
+                "content-code": {
+                  "type": "string"
+                },
+                "content-code-inline": {
+                  "type": "string"
+                },
+                "bg-code-inline": {
+                  "type": "string"
+                },
+                "bg-page": {
+                  "type": "string"
+                },
+                "bg-sidebar": {
+                  "type": "string"
+                },
+                "bg-subtle": {
+                  "type": "string"
+                },
+                "bg-raised": {
+                  "type": "string"
+                },
+                "bg-header": {
+                  "type": "string"
+                },
+                "bg-code": {
+                  "type": "string"
+                },
+                "bg-code-header": {
+                  "type": "string"
+                },
+                "border": {
+                  "type": "string"
+                },
+                "border-subtle": {
+                  "type": "string"
+                },
+                "border-code": {
+                  "type": "string"
+                },
+                "accent": {
+                  "type": "string"
+                },
+                "accent-hover": {
+                  "type": "string"
+                },
+                "accent-subtle": {
+                  "type": "string"
+                },
+                "accent-strong": {
+                  "type": "string"
+                },
+                "accent-muted": {
+                  "type": "string"
+                },
+                "on-accent": {
+                  "type": "string"
+                },
+                "accent-fill": {
+                  "type": "string"
+                },
+                "cta-bg": {
+                  "type": "string"
+                },
+                "cta-fg": {
+                  "type": "string"
+                },
+                "hero-card-bg": {
+                  "type": "string"
+                },
+                "hero-card-fg": {
+                  "type": "string"
+                },
+                "status-success": {
+                  "type": "string"
+                },
+                "status-success-bg": {
+                  "type": "string"
+                },
+                "status-warning": {
+                  "type": "string"
+                },
+                "status-warning-bg": {
+                  "type": "string"
+                },
+                "status-warning-text": {
+                  "type": "string"
+                },
+                "status-error": {
+                  "type": "string"
+                },
+                "status-info": {
+                  "type": "string"
+                },
+                "status-info-bg": {
+                  "type": "string"
+                },
+                "status-info-text": {
+                  "type": "string"
+                },
+                "param-name": {
+                  "type": "string"
+                },
+                "param-required": {
+                  "type": "string"
+                },
+                "param-required-bg": {
+                  "type": "string"
+                },
+                "param-type": {
+                  "type": "string"
+                },
+                "method-get": {
+                  "type": "string"
+                },
+                "method-get-bg": {
+                  "type": "string"
+                },
+                "method-post": {
+                  "type": "string"
+                },
+                "method-post-bg": {
+                  "type": "string"
+                },
+                "method-put": {
+                  "type": "string"
+                },
+                "method-put-bg": {
+                  "type": "string"
+                },
+                "method-patch": {
+                  "type": "string"
+                },
+                "method-patch-bg": {
+                  "type": "string"
+                },
+                "method-delete": {
+                  "type": "string"
+                },
+                "method-delete-bg": {
+                  "type": "string"
+                },
+                "method-neutral": {
+                  "type": "string"
+                },
+                "method-neutral-bg": {
+                  "type": "string"
+                },
+                "syntax-text": {
+                  "type": "string"
+                },
+                "syntax-keyword": {
+                  "type": "string"
+                },
+                "syntax-string": {
+                  "type": "string"
+                },
+                "syntax-key": {
+                  "type": "string"
+                },
+                "syntax-number": {
+                  "type": "string"
+                },
+                "syntax-punct": {
+                  "type": "string"
+                },
+                "syntax-comment": {
+                  "type": "string"
+                },
+                "syntax-inserted": {
+                  "type": "string"
+                },
+                "syntax-deleted": {
+                  "type": "string"
+                },
+                "scrollbar": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "dark": {
+              "type": "object",
+              "properties": {
+                "content-primary": {
+                  "type": "string"
+                },
+                "content-secondary": {
+                  "type": "string"
+                },
+                "content-muted": {
+                  "type": "string"
+                },
+                "content-inverse": {
+                  "type": "string"
+                },
+                "content-code": {
+                  "type": "string"
+                },
+                "content-code-inline": {
+                  "type": "string"
+                },
+                "bg-code-inline": {
+                  "type": "string"
+                },
+                "bg-page": {
+                  "type": "string"
+                },
+                "bg-sidebar": {
+                  "type": "string"
+                },
+                "bg-subtle": {
+                  "type": "string"
+                },
+                "bg-raised": {
+                  "type": "string"
+                },
+                "bg-header": {
+                  "type": "string"
+                },
+                "bg-code": {
+                  "type": "string"
+                },
+                "bg-code-header": {
+                  "type": "string"
+                },
+                "border": {
+                  "type": "string"
+                },
+                "border-subtle": {
+                  "type": "string"
+                },
+                "border-code": {
+                  "type": "string"
+                },
+                "accent": {
+                  "type": "string"
+                },
+                "accent-hover": {
+                  "type": "string"
+                },
+                "accent-subtle": {
+                  "type": "string"
+                },
+                "accent-strong": {
+                  "type": "string"
+                },
+                "accent-muted": {
+                  "type": "string"
+                },
+                "on-accent": {
+                  "type": "string"
+                },
+                "accent-fill": {
+                  "type": "string"
+                },
+                "cta-bg": {
+                  "type": "string"
+                },
+                "cta-fg": {
+                  "type": "string"
+                },
+                "hero-card-bg": {
+                  "type": "string"
+                },
+                "hero-card-fg": {
+                  "type": "string"
+                },
+                "status-success": {
+                  "type": "string"
+                },
+                "status-success-bg": {
+                  "type": "string"
+                },
+                "status-warning": {
+                  "type": "string"
+                },
+                "status-warning-bg": {
+                  "type": "string"
+                },
+                "status-warning-text": {
+                  "type": "string"
+                },
+                "status-error": {
+                  "type": "string"
+                },
+                "status-info": {
+                  "type": "string"
+                },
+                "status-info-bg": {
+                  "type": "string"
+                },
+                "status-info-text": {
+                  "type": "string"
+                },
+                "param-name": {
+                  "type": "string"
+                },
+                "param-required": {
+                  "type": "string"
+                },
+                "param-required-bg": {
+                  "type": "string"
+                },
+                "param-type": {
+                  "type": "string"
+                },
+                "method-get": {
+                  "type": "string"
+                },
+                "method-get-bg": {
+                  "type": "string"
+                },
+                "method-post": {
+                  "type": "string"
+                },
+                "method-post-bg": {
+                  "type": "string"
+                },
+                "method-put": {
+                  "type": "string"
+                },
+                "method-put-bg": {
+                  "type": "string"
+                },
+                "method-patch": {
+                  "type": "string"
+                },
+                "method-patch-bg": {
+                  "type": "string"
+                },
+                "method-delete": {
+                  "type": "string"
+                },
+                "method-delete-bg": {
+                  "type": "string"
+                },
+                "method-neutral": {
+                  "type": "string"
+                },
+                "method-neutral-bg": {
+                  "type": "string"
+                },
+                "syntax-text": {
+                  "type": "string"
+                },
+                "syntax-keyword": {
+                  "type": "string"
+                },
+                "syntax-string": {
+                  "type": "string"
+                },
+                "syntax-key": {
+                  "type": "string"
+                },
+                "syntax-number": {
+                  "type": "string"
+                },
+                "syntax-punct": {
+                  "type": "string"
+                },
+                "syntax-comment": {
+                  "type": "string"
+                },
+                "syntax-inserted": {
+                  "type": "string"
+                },
+                "syntax-deleted": {
+                  "type": "string"
+                },
+                "scrollbar": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "fonts": {
+          "type": "object",
+          "properties": {
+            "display": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "family": {
+                      "type": "string"
+                    },
+                    "weights": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "fallback": {
+                      "type": "string"
+                    },
+                    "webfont": {
+                      "type": "string",
+                      "enum": [
+                        "google",
+                        "system",
+                        "self-hosted"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "body": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "family": {
+                      "type": "string"
+                    },
+                    "weights": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "fallback": {
+                      "type": "string"
+                    },
+                    "webfont": {
+                      "type": "string",
+                      "enum": [
+                        "google",
+                        "system",
+                        "self-hosted"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "mono": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "family": {
+                      "type": "string"
+                    },
+                    "weights": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "fallback": {
+                      "type": "string"
+                    },
+                    "webfont": {
+                      "type": "string",
+                      "enum": [
+                        "google",
+                        "system",
+                        "self-hosted"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "typography": {
+          "type": "object",
+          "properties": {
+            "display-h1": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "heading-h2": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "heading-h3": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "heading-h4": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "body-lg": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "body-md": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "body-sm": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "label-md": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "label-sm": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strong-sm": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strong-md": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "code-md": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "code-sm": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "caption": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "eyebrow": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "nav-item": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "nav-section": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "mono-label": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "card-title": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "apiTypography": {
+          "type": "object",
+          "properties": {
+            "display-h1": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "heading-h2": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "heading-h3": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "heading-h4": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "body-lg": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "body-md": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "body-sm": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "label-md": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "label-sm": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strong-sm": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strong-md": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "code-md": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "code-sm": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "caption": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "eyebrow": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "nav-item": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "nav-section": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "mono-label": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            },
+            "card-title": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "enum": [
+                    "display",
+                    "body",
+                    "mono"
+                  ]
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "lineHeight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "const": "normal"
+                    }
+                  ]
+                },
+                "letterSpacing": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "radius": {
+          "type": "object",
+          "properties": {
+            "sm": {
+              "type": "number"
+            },
+            "md": {
+              "type": "number"
+            },
+            "lg": {
+              "type": "number"
+            },
+            "xl": {
+              "type": "number"
+            },
+            "full": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "shadow": {
+          "type": "object",
+          "properties": {
+            "light": {
+              "type": "object",
+              "properties": {
+                "sm": {
+                  "type": "string"
+                },
+                "md": {
+                  "type": "string"
+                },
+                "lg": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "dark": {
+              "type": "object",
+              "properties": {
+                "sm": {
+                  "type": "string"
+                },
+                "md": {
+                  "type": "string"
+                },
+                "lg": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "colors": {
+      "description": "Deprecated: use appearance.accent and themeOverrides.",
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "string"
+        },
+        "accent": {
+          "type": "string"
+        },
+        "background": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "fonts": {
+      "description": "Deprecated: use appearance.fonts.",
+      "type": "object",
+      "properties": {
+        "heading": {
+          "type": "string"
+        },
+        "display": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "mono": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "codeTheme": {
+      "description": "Inert."
+    },
+    "features": {
+      "description": "Feature flags.",
+      "type": "object",
+      "properties": {
+        "playground": {
+          "type": "boolean"
+        },
+        "copyPageActions": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "guides": {
+                  "type": "boolean"
+                },
+                "api": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "sidebarMethodBadges": {
+          "type": "boolean"
+        },
+        "aiAssistant": {
+          "type": "boolean"
+        },
+        "themeToggle": {
+          "description": "Deprecated: use appearance.toggle.",
+          "type": "boolean"
+        },
+        "apiSectionLabel": {
+          "type": "boolean"
+        },
+        "codeLineNumbers": {
+          "type": "boolean"
+        },
+        "codeLanguageTabs": {
+          "description": "Deprecated no-op.",
+          "type": "boolean"
+        },
+        "parameterStyle": {
+          "description": "Deprecated no-op.",
+          "type": "string",
+          "enum": [
+            "table",
+            "rows"
+          ]
+        },
+        "endpointBarAction": {
+          "type": "string",
+          "enum": [
+            "tryIt",
+            "copy",
+            "none"
+          ]
+        },
+        "codeLanguageSelector": {
+          "type": "string",
+          "enum": [
+            "dropdown",
+            "tabs",
+            "pills"
+          ]
+        },
+        "codeBlockStyle": {
+          "description": "Deprecated: use appearance.components.code.",
+          "type": "string",
+          "enum": [
+            "pill",
+            "panel"
+          ]
+        },
+        "sidebarStyle": {
+          "description": "Deprecated: use appearance.layout.nav.",
+          "type": "string",
+          "enum": [
+            "collapsible",
+            "flat"
+          ]
+        },
+        "navStyle": {
+          "description": "Deprecated: use appearance.layout.header.",
+          "type": "string",
+          "enum": [
+            "split",
+            "single"
+          ]
+        },
+        "endpointBarUrl": {
+          "type": "string",
+          "enum": [
+            "path",
+            "full"
+          ]
+        },
+        "responseStyle": {
+          "type": "string",
+          "enum": [
+            "schema",
+            "prose"
+          ]
+        },
+        "shellWidth": {
+          "description": "Deprecated: use appearance.width.",
+          "type": "string",
+          "enum": [
+            "contained",
+            "full"
+          ]
+        },
+        "panelLabels": {
+          "type": "string",
+          "enum": [
+            "inline",
+            "above"
+          ]
+        },
+        "copyControlStyle": {
+          "type": "string",
+          "enum": [
+            "icon",
+            "label"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "navigation": {
+      "description": "Overrides the folder structure, which is the navigation by default.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/__schema0"
+      }
+    },
+    "tabs": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "url"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "banner": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "dismissible": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "status": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "label"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "topbarCta": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "label",
+            "url"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "topbarLinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "label",
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "footer": {
+      "type": "object",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "links"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "search": {
+      "type": "object",
+      "properties": {
+        "placeholder": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "dashboardUrl": {
+      "description": "Inert.",
+      "type": "string"
+    },
+    "ai": {
+      "description": "Inert."
+    },
+    "customCSS": {
+      "description": "Not read by hosted builds.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "customJS": {
+      "description": "Not read by hosted builds.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "scripts": {
+      "description": "Not read by hosted builds.",
+      "type": "array",
+      "items": {}
+    },
+    "openapi": {
+      "anyOf": [
+        {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "prefix": {
+                  "type": "string"
+                },
+                "servers": {
+                  "type": "array",
+                  "items": {}
+                },
+                "auth": {},
+                "headers": {
+                  "type": "array",
+                  "items": {}
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "prefix": {
+                    "type": "string"
+                  },
+                  "servers": {
+                    "type": "array",
+                    "items": {}
+                  },
+                  "auth": {},
+                  "headers": {
+                    "type": "array",
+                    "items": {}
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "baseUrls": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string",
+          "enum": [
+            "header",
+            "query"
+          ]
+        },
+        "prefix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "headers": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "baseUrl": {
+      "description": "Base URL for the MCP tool manifest.",
+      "type": "string"
+    },
+    "redirects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "source": {
+            "description": "Deprecated: use from.",
+            "type": "string"
+          },
+          "destination": {
+            "description": "Deprecated: use to.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "versioning": {
+      "type": "object",
+      "properties": {
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "branch": {
+                "type": "string"
+              },
+              "tag": {
+                "type": "string"
+              },
+              "default": {
+                "type": "boolean"
+              },
+              "deprecated": {
+                "type": "boolean"
+              },
+              "deprecationMessage": {
+                "type": "string"
+              },
+              "autoRedirectToLatest": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "versions"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "__schema0": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "description": "Sidebar group label.",
+          "type": "string"
+        },
+        "tab": {
+          "description": "Header tab this group belongs to (a tabs[].name).",
+          "type": "string"
+        },
+        "section": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "pages": {
+          "description": "Page slugs, relative to the docs root, without extension.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/definitions/__schema0"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "url"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

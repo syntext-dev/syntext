@@ -15,6 +15,9 @@ export const initCommand = new Command('init')
   .option('--create', 'Also create the project on Syntext (requires login)')
   .option('--ci <provider>', 'Generate CI config (github, gitlab, bitbucket)')
   .option('--docker', 'Generate Dockerfile for self-hosted deployment')
+  .addHelpText('after', `
+The new syntext.json starts with "$schema": "https://syntext.dev/schema/syntext.json",
+so VS Code and JetBrains autocomplete every key and flag typos as you type.`)
   .action(async (directory, options) => {
     const spinner = ora('Creating Syntext project...').start()
     const targetDir = join(process.cwd(), directory)
@@ -137,14 +140,18 @@ export const initCommand = new Command('init')
     }
   })
 
-function generateConfig(name: string): string {
+/** The JSON Schema URL editors use to autocomplete and check syntext.json. */
+export const SYNTEXT_SCHEMA_URL = 'https://syntext.dev/schema/syntext.json'
+
+/**
+ * The starter syntext.json: the `$schema` line first, so editors autocomplete
+ * every key, and no deprecated keys, so `stx check` on a new project is clean.
+ */
+export function generateConfig(name: string): string {
   return JSON.stringify({
+    $schema: SYNTEXT_SCHEMA_URL,
     name,
     theme: 'default',
-    colors: {
-      primary: '#6366f1',
-      accent: '#8b5cf6',
-    },
     navigation: [
       {
         group: 'Getting Started',

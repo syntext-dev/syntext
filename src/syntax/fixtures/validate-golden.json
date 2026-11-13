@@ -1,0 +1,708 @@
+[
+  {
+    "name": "valid",
+    "config": {
+      "$schema": "https://syntext.dev/schema/syntext.json",
+      "name": "Acme",
+      "theme": "paper",
+      "appearance": {
+        "accent": "#0E7A63",
+        "layout": {
+          "nav": "chevrons"
+        }
+      },
+      "navigation": [
+        {
+          "group": "Start",
+          "pages": [
+            "index",
+            {
+              "group": "Nested",
+              "pages": [
+                "a"
+              ]
+            },
+            {
+              "title": "X",
+              "url": "https://x"
+            }
+          ]
+        }
+      ],
+      "redirects": [
+        {
+          "from": "/a",
+          "to": "/b",
+          "status": 301
+        }
+      ],
+      "status": null
+    },
+    "issues": []
+  },
+  {
+    "name": "unknown-top",
+    "config": {
+      "nmae": "Acme",
+      "colours": {},
+      "zzzzqqq": 1
+    },
+    "issues": [
+      {
+        "path": "nmae",
+        "segments": [
+          "nmae"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"nmae\". Did you mean \"name\"?",
+        "suggestion": "name"
+      },
+      {
+        "path": "colours",
+        "segments": [
+          "colours"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"colours\". Did you mean \"colors\"?",
+        "suggestion": "colors"
+      },
+      {
+        "path": "zzzzqqq",
+        "segments": [
+          "zzzzqqq"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"zzzzqqq\"."
+      }
+    ]
+  },
+  {
+    "name": "unknown-nested",
+    "config": {
+      "seo": {
+        "ogimage": "x"
+      },
+      "features": {
+        "playgroud": true
+      },
+      "banner": {
+        "text": "x",
+        "dismisable": true
+      }
+    },
+    "issues": [
+      {
+        "path": "seo.ogimage",
+        "segments": [
+          "seo",
+          "ogimage"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"ogimage\". Did you mean \"ogImage\"?",
+        "suggestion": "ogImage"
+      },
+      {
+        "path": "features.playgroud",
+        "segments": [
+          "features",
+          "playgroud"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"playgroud\". Did you mean \"playground\"?",
+        "suggestion": "playground"
+      },
+      {
+        "path": "banner.dismisable",
+        "segments": [
+          "banner",
+          "dismisable"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"dismisable\". Did you mean \"dismissible\"?",
+        "suggestion": "dismissible"
+      }
+    ]
+  },
+  {
+    "name": "enum",
+    "config": {
+      "features": {
+        "codeLanguageSelector": "dropdwn",
+        "endpointBarAction": "nope"
+      },
+      "auth": {
+        "name": "k",
+        "in": "body"
+      }
+    },
+    "issues": [
+      {
+        "path": "features.endpointBarAction",
+        "segments": [
+          "features",
+          "endpointBarAction"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "\"nope\" is not a valid features.endpointBarAction value. Use one of: tryIt, copy, none. Did you mean \"none\"?",
+        "suggestion": "none"
+      },
+      {
+        "path": "features.codeLanguageSelector",
+        "segments": [
+          "features",
+          "codeLanguageSelector"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "\"dropdwn\" is not a valid features.codeLanguageSelector value. Use one of: dropdown, tabs, pills. Did you mean \"dropdown\"?",
+        "suggestion": "dropdown"
+      },
+      {
+        "path": "auth.in",
+        "segments": [
+          "auth",
+          "in"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "\"body\" is not a valid auth.in value. Use one of: header, query."
+      }
+    ]
+  },
+  {
+    "name": "types",
+    "config": {
+      "name": 5,
+      "logo": 5,
+      "tabs": "Home",
+      "navigation": {},
+      "search": {
+        "enabled": "yes"
+      }
+    },
+    "issues": [
+      {
+        "path": "name",
+        "segments": [
+          "name"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "name should be a string, not a number."
+      },
+      {
+        "path": "logo",
+        "segments": [
+          "logo"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "logo should be a string, not a number."
+      },
+      {
+        "path": "navigation",
+        "segments": [
+          "navigation"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "navigation should be an array, not an object."
+      },
+      {
+        "path": "tabs",
+        "segments": [
+          "tabs"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "tabs should be an array, not a string."
+      },
+      {
+        "path": "search.enabled",
+        "segments": [
+          "search",
+          "enabled"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "search.enabled should be a boolean, not a string."
+      }
+    ]
+  },
+  {
+    "name": "union-object",
+    "config": {
+      "logo": {
+        "light": "a",
+        "drk": "b"
+      },
+      "favicon": {
+        "light": 1
+      },
+      "openapi": [
+        {
+          "path": "a",
+          "prfix": "/x"
+        },
+        3
+      ]
+    },
+    "issues": [
+      {
+        "path": "logo.drk",
+        "segments": [
+          "logo",
+          "drk"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"drk\". Did you mean \"dark\"?",
+        "suggestion": "dark"
+      },
+      {
+        "path": "favicon.light",
+        "segments": [
+          "favicon",
+          "light"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "favicon.light should be a string, not a number."
+      },
+      {
+        "path": "openapi",
+        "segments": [
+          "openapi"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "openapi should be a string, not an array."
+      }
+    ]
+  },
+  {
+    "name": "nav-unknown",
+    "config": {
+      "navigation": [
+        {
+          "group": "G",
+          "pagez": [
+            "a"
+          ]
+        },
+        {
+          "title": "T"
+        },
+        "bad"
+      ]
+    },
+    "issues": [
+      {
+        "path": "navigation.0.pagez",
+        "segments": [
+          "navigation",
+          0,
+          "pagez"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"pagez\". Did you mean \"pages\"?",
+        "suggestion": "pages"
+      },
+      {
+        "path": "navigation.1.title",
+        "segments": [
+          "navigation",
+          1,
+          "title"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"title\"."
+      },
+      {
+        "path": "navigation.2",
+        "segments": [
+          "navigation",
+          2
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "navigation.2 should be an object, not a string."
+      }
+    ]
+  },
+  {
+    "name": "required",
+    "config": {
+      "topbarCta": {
+        "label": "x"
+      },
+      "anchors": [
+        {
+          "name": "a"
+        }
+      ],
+      "redirects": [
+        {
+          "form": "/a"
+        }
+      ]
+    },
+    "issues": [
+      {
+        "path": "anchors.0.url",
+        "segments": [
+          "anchors",
+          0,
+          "url"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "anchors.0.url should be a string, not a undefined."
+      },
+      {
+        "path": "topbarCta.url",
+        "segments": [
+          "topbarCta",
+          "url"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "topbarCta.url should be a string, not a undefined."
+      },
+      {
+        "path": "redirects.0.form",
+        "segments": [
+          "redirects",
+          0,
+          "form"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"form\". Did you mean \"from\"?",
+        "suggestion": "from"
+      }
+    ]
+  },
+  {
+    "name": "appearance",
+    "config": {
+      "appearance": {
+        "accent": "red",
+        "mode": "dim",
+        "size": 14,
+        "layout": {
+          "nav": "collapsible",
+          "hedaer": "x"
+        },
+        "fonts": {
+          "heading": 3
+        }
+      }
+    },
+    "issues": [
+      {
+        "path": "appearance.accent",
+        "segments": [
+          "appearance",
+          "accent"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "appearance.accent: a hex colour like \"#0E7A63\""
+      },
+      {
+        "path": "appearance.mode",
+        "segments": [
+          "appearance",
+          "mode"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "\"dim\" is not a valid appearance.mode value. Use one of: light, dark, system."
+      },
+      {
+        "path": "appearance.fonts.heading",
+        "segments": [
+          "appearance",
+          "fonts",
+          "heading"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "appearance.fonts.heading should be a string, not a number."
+      },
+      {
+        "path": "appearance.size",
+        "segments": [
+          "appearance",
+          "size"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "\"14\" is not a valid appearance.size value. Use one of: 15."
+      },
+      {
+        "path": "appearance.layout.hedaer",
+        "segments": [
+          "appearance",
+          "layout",
+          "hedaer"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"hedaer\". Did you mean \"header\"?",
+        "suggestion": "header"
+      }
+    ]
+  },
+  {
+    "name": "overrides",
+    "config": {
+      "themeOverrides": {
+        "colors": {
+          "light": {
+            "accent": "#fff",
+            "acent-strong": "#000"
+          }
+        },
+        "radius": {
+          "sm": "x"
+        }
+      }
+    },
+    "issues": [
+      {
+        "path": "themeOverrides.colors.light.acent-strong",
+        "segments": [
+          "themeOverrides",
+          "colors",
+          "light",
+          "acent-strong"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"acent-strong\". Did you mean \"accent-strong\"?",
+        "suggestion": "accent-strong"
+      },
+      {
+        "path": "themeOverrides.radius.sm",
+        "segments": [
+          "themeOverrides",
+          "radius",
+          "sm"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "themeOverrides.radius.sm should be a number, not a string."
+      }
+    ]
+  },
+  {
+    "name": "deprecated-valid",
+    "config": {
+      "colors": {
+        "primary": "#6366F1",
+        "accent": "#2AC3DE"
+      },
+      "fonts": {
+        "display": "Inter"
+      },
+      "language": "en",
+      "ogImage": "/o.png",
+      "i18n": {
+        "sourceLocale": "en",
+        "targetLocales": [
+          "fr"
+        ]
+      },
+      "features": {
+        "navStyle": "split"
+      },
+      "redirects": [
+        {
+          "source": "/a",
+          "destination": "/b"
+        }
+      ]
+    },
+    "issues": []
+  },
+  {
+    "name": "not-object-root",
+    "config": [],
+    "issues": [
+      {
+        "path": "",
+        "segments": [],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "The config should be an object, not an array."
+      }
+    ]
+  },
+  {
+    "name": "i18n-locales",
+    "config": {
+      "i18n": {
+        "locales": [
+          "en",
+          {
+            "locale": "fr",
+            "label": "Français",
+            "dir": "ltr"
+          }
+        ]
+      }
+    },
+    "issues": [
+      {
+        "path": "i18n.locales.1.dir",
+        "segments": [
+          "i18n",
+          "locales",
+          1,
+          "dir"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"dir\"."
+      }
+    ]
+  },
+  {
+    "name": "versioning",
+    "config": {
+      "versioning": {
+        "versions": [
+          {
+            "label": "v1",
+            "defualt": true
+          },
+          {
+            "branch": "x"
+          }
+        ]
+      }
+    },
+    "issues": [
+      {
+        "path": "versioning.versions.0.defualt",
+        "segments": [
+          "versioning",
+          "versions",
+          0,
+          "defualt"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"defualt\". Did you mean \"default\"?",
+        "suggestion": "default"
+      },
+      {
+        "path": "versioning.versions.1.label",
+        "segments": [
+          "versioning",
+          "versions",
+          1,
+          "label"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "versioning.versions.1.label should be a string, not a undefined."
+      }
+    ]
+  },
+  {
+    "name": "footer",
+    "config": {
+      "footer": {
+        "columns": [
+          {
+            "title": "A",
+            "links": [
+              {
+                "label": "x",
+                "url": "y",
+                "href": "z"
+              }
+            ]
+          }
+        ],
+        "copyright": "c"
+      }
+    },
+    "issues": [
+      {
+        "path": "footer.columns.0.links.0.href",
+        "segments": [
+          "footer",
+          "columns",
+          0,
+          "links",
+          0,
+          "href"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"href\"."
+      },
+      {
+        "path": "footer.copyright",
+        "segments": [
+          "footer",
+          "copyright"
+        ],
+        "kind": "unknown-key",
+        "severity": "warning",
+        "message": "Unknown key \"copyright\"."
+      }
+    ]
+  },
+  {
+    "name": "int",
+    "config": {
+      "redirects": [
+        {
+          "from": "/a",
+          "to": "/b",
+          "status": 30.5
+        }
+      ],
+      "appearance": {
+        "toggle": "yes"
+      }
+    },
+    "issues": [
+      {
+        "path": "appearance.toggle",
+        "segments": [
+          "appearance",
+          "toggle"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "appearance.toggle should be a boolean, not a string."
+      },
+      {
+        "path": "redirects.0.status",
+        "segments": [
+          "redirects",
+          0,
+          "status"
+        ],
+        "kind": "invalid-value",
+        "severity": "warning",
+        "message": "redirects.0.status should be an int, not a number."
+      }
+    ]
+  }
+]

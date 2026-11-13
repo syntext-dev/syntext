@@ -256,4 +256,27 @@ Some documentation content.
       expect(exitCode).not.toBe(0)
     })
   })
+
+  describe('Syntext syntax mode (no --from)', () => {
+    it('should make --from optional and offer --v2 and --offline', async () => {
+      const { migrateCommand } = await import('./migrate')
+      const flags = migrateCommand.options.map((o) => o.long)
+      expect(flags).toEqual(expect.arrayContaining(['--from', '--dir', '--dry-run', '--json', '--v2', '--offline']))
+      expect(migrateCommand.options.find((o) => o.long === '--from')?.mandatory).toBe(false)
+    })
+
+    it('should rewrite deprecated syntax when run without --from', async () => {
+      const dir = await createTempDir()
+      await mkdir(join(dir, 'docs'), { recursive: true })
+      await writeFile(join(dir, 'syntext.json'), '{ "language": "en" }\n')
+      await writeFile(join(dir, 'docs/a.mdx'), '<Caution>x</Caution>\n')
+      const proc = Bun.spawn(['bun', 'run', join(import.meta.dir, '../index.ts'), 'migrate', '--dir', dir, '--offline', '--json'], { stdout: 'pipe', stderr: 'pipe' })
+      const out = await new Response(proc.stdout).text()
+      expect(await proc.exited).toBe(0)
+      expect(JSON.parse(out).applied.map((c: { code: string }) => c.code)).toEqual(['config.language', 'mdx.caution'])
+      expect(await readFile(join(dir, 'syntext.json'), 'utf-8')).toBe('{ "locale": "en" }\n')
+      expect(await readFile(join(dir, 'docs/a.mdx'), 'utf-8')).toBe('<Warning>x</Warning>\n')
+      await rm(dir, { recursive: true, force: true })
+    })
+  })
 })

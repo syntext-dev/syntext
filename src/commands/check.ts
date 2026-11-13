@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { join, relative } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import chalk from 'chalk'
 import ora from 'ora'
@@ -8,6 +8,8 @@ import { scanSourceFiles } from '../annotations/scan-sources'
 import { detectDrift, findUnannotated, loadStoredHashes, saveHashes, generateDriftReport, formatDriftMarkdown } from '../annotations/drift'
 import type { DriftConfig, DriftIssue } from '../annotations/drift'
 import { loadStyleGuide, validateStyleGuide } from '../annotations/style-guide'
+import { checkProjectSyntax } from '../syntax/check-syntax'
+import { runExplain } from './check-explain'
 
 /**
  * Remove fenced code blocks and inline code spans so their contents
@@ -50,8 +52,8 @@ export function findBrokenLinks(content: string, files: string[]): string[] {
 }
 
 export const checkCommand = new Command('check')
-  .description('Validate documentation and detect annotation drift')
-  .option('-d, --dir <dir>', 'Documentation directory', '.')
+  .description('Validate docs and syntext.json: deprecated syntax, unknown keys (with "did you mean"), broken links and annotation drift')
+  .option('-d, --dir <dir>', 'Project folder that holds syntext.json', '.')
   .option('-s, --src <paths...>', 'Source directories to scan for @stx annotations', ['src'])
   .option('--json', 'Output result as JSON')
   .option('--strict', 'Treat warnings as errors')
@@ -60,12 +62,26 @@ export const checkCommand = new Command('check')
   .option('--coverage', 'Show annotation coverage report')
   .option('--style-guide <path>', 'Path to annotation style-guide JSON file', '.syntext/style-guide.json')
   .option('--markdown', 'Output as markdown (for PR comments)')
+  .option('--explain [topic]', 'Show each resolved value and where it came from, instead of checking (topic: appearance)')
+  .addHelpText('after', `
+Deprecated config keys, frontmatter keys and MDX tags and props are warnings
+with the file, the line and the replacement; \`stx migrate\` rewrites them.
+Unknown keys and values are warnings with the closest valid name.
+
+Examples:
+  $ stx check                        Check the project in this folder
+  $ stx check --strict               Fail on warnings too (for CI)
+  $ stx check --explain appearance   Where each colour, font and layout value comes from`)
   .action(async (options) => {
-    const rootDir = join(process.cwd(), options.dir)
+    if (options.explain !== undefined) {
+      process.exitCode = await runExplain(options.explain, { dir: options.dir, json: options.json })
+      return
+    }
+    const rootDir = resolve(options.dir)
     const docsDir = join(rootDir, 'docs')
     const spinner = options.json || options.markdown ? null : ora('Checking documentation...').start()
 
-    const issues: Array<{ file: string; type: string; message: string; line?: number }> = []
+    const issues: Array<{ file: string; type: string; message: string; line?: number; code?: string }> = []
 
     try {
       // --- Phase 1: MDX validation (existing) ---
@@ -98,6 +114,13 @@ export const checkCommand = new Command('check')
         for (const href of findBrokenLinks(content, files)) {
           issues.push({ file, type: 'error', message: 'Broken link: ' + href })
         }
+      }
+
+      // --- Syntax: deprecated forms, unknown keys, invalid values (doc engine v2) ---
+      spinner && (spinner.text = 'Checking syntax...')
+      const syntax = await checkProjectSyntax(rootDir)
+      for (const si of syntax.issues) {
+        issues.push({ file: si.file, line: si.line, type: options.strict ? 'error' : si.type, message: si.message, ...(si.code ? { code: si.code } : {}) })
       }
 
       // --- Phase 2: Annotation drift detection ---

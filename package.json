@@ -9,6 +9,7 @@
     "dev": "bun --watch src/index.ts",
     "build": "bun build src/index.ts --compile --minify --outfile dist/stx",
     "test": "bun test",
+    "test:sync": "bun test src/syntax/sync.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

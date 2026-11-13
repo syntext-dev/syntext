@@ -3,6 +3,7 @@ import { join, basename, dirname, extname, relative, resolve } from 'node:path'
 import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises'
 import chalk from 'chalk'
 import ora from 'ora'
+import { runSyntaxMigrate } from './migrate-syntax'
 
 type MigrationSource = 'mintlify' | 'docusaurus' | 'gitbook' | 'readme'
 
@@ -15,13 +16,25 @@ type MigrationResult = {
 }
 
 export const migrateCommand = new Command('migrate')
-  .description('Migrate documentation from another platform to Syntext')
-  .requiredOption('--from <platform>', 'Source platform (mintlify, docusaurus, gitbook, readme)')
-  .option('-d, --dir <dir>', 'Source docs directory', '.')
-  .option('-o, --output <dir>', 'Output directory', 'docs')
+  .description('Rewrite deprecated Syntext syntax in place (config keys, frontmatter keys, MDX tags and props), or import docs from another platform with --from')
+  .option('--from <platform>', 'Import from another platform instead: mintlify, docusaurus, gitbook or readme')
+  .option('-d, --dir <dir>', 'Project folder that holds syntext.json; with --from, the source docs folder', '.')
+  .option('-o, --output <dir>', 'Output directory (with --from)', 'docs')
   .option('--json', 'Output result as JSON')
-  .option('--dry-run', 'Show what would be migrated without writing files')
+  .option('--dry-run', 'Show what would change (a diff for Syntext syntax) without writing files')
+  .option('--v2', 'Also apply rewrites that move values into appearance, which switches a v1 site to doc engine v2')
+  .option('--offline', 'Use the deprecation table bundled with stx instead of fetching the published one')
+  .addHelpText('after', `
+Examples:
+  $ stx migrate --dry-run          Show the diff for every deprecated form
+  $ stx migrate                    Rewrite them in place (run twice: nothing changes)
+  $ stx migrate --v2               Also move colors, fonts and style flags into appearance
+  $ stx migrate --from mintlify    Import a Mintlify site`)
   .action(async (options) => {
+    if (!options.from) {
+      process.exitCode = await runSyntaxMigrate({ dir: options.dir, dryRun: options.dryRun, json: options.json, v2: options.v2, offline: options.offline })
+      return
+    }
     const source = options.from as MigrationSource
     const sourceDir = resolve(options.dir)
     const outputDir = resolve(options.output)

@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'bun:test'
+import { join } from 'node:path'
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { stripCodeBlocks, findBrokenLinks } from './check'
 
 describe('stripCodeBlocks', () => {
@@ -84,5 +87,44 @@ describe('findBrokenLinks', () => {
   it('should report multiple broken links in one document', () => {
     const content = '[a](/gone) and [b](/also/gone)'
     expect(findBrokenLinks(content, files)).toEqual(['/gone', '/also/gone'])
+  })
+})
+
+describe('check command: syntax and --explain', () => {
+  const run = async (args: string[]) => {
+    const proc = Bun.spawn(['bun', 'run', join(import.meta.dir, '../index.ts'), 'check', ...args], { stdout: 'pipe', stderr: 'pipe' })
+    const out = await new Response(proc.stdout).text()
+    return { code: await proc.exited, out }
+  }
+
+  it('should offer --explain', async () => {
+    const { checkCommand } = await import('./check')
+    expect(checkCommand.options.map((o) => o.long)).toContain('--explain')
+  })
+
+  it('should warn about deprecated syntax with file, line and code in --json', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'stx-check-'))
+    await mkdir(join(dir, 'docs'), { recursive: true })
+    await writeFile(join(dir, 'syntext.json'), '{\n  "name": "A",\n  "nmae": "B"\n}\n')
+    await writeFile(join(dir, 'docs/u.mdx'), '---\ntitle: U\n---\n<Update label="June">x</Update>\n')
+    const { code, out } = await run(['--dir', dir, '--json'])
+    const body = JSON.parse(out)
+    expect(code).toBe(0)
+    expect(body.issues).toEqual(expect.arrayContaining([
+      { file: 'syntext.json', line: 3, type: 'warning', code: 'config.unknown-key', message: 'Unknown key "nmae" is ignored. Did you mean "name"?' },
+      { file: 'docs/u.mdx', line: 4, type: 'warning', code: 'mdx.update-label', message: '<Update label="…"> is deprecated. Use <Update title="…"> instead.' },
+    ]))
+    const strict = await run(['--dir', dir, '--json', '--strict'])
+    expect(strict.code).toBe(1)
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('should explain the appearance as JSON', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'stx-check-'))
+    await writeFile(join(dir, 'syntext.json'), '{ "theme": "orbit" }\n')
+    const { code, out } = await run(['--dir', dir, '--explain', 'appearance', '--json'])
+    expect(code).toBe(0)
+    expect(JSON.parse(out)).toMatchObject({ success: true, topic: 'appearance', preset: 'orbit' })
+    await rm(dir, { recursive: true, force: true })
   })
 })
