@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test'
-import { explainAppearance } from './explain'
+import { explainAppearance, renderedAccent } from './explain'
+import type { FetchedOrgTheme } from './org-theme-fetch'
 
 const row = <T extends { path: string }>(rows: T[], path: string): T | undefined => rows.find((r) => r.path === path)
 
@@ -73,6 +74,41 @@ describe('explainAppearance', () => {
     expect(light?.passes).toBe(false)
     expect(light?.suggestion).toMatch(/^#[0-9A-F]{6}$/)
     expect(e.contrast).toHaveLength(4)
+  })
+
+  it('should measure the accent legacy colors.primary renders on v2, not the preset accent', () => {
+    const e = explainAppearance({ theme: 'workbench', colors: { primary: '#FFFF00' } })
+    expect(e.v2).toBe(true)
+    expect(e.accent).toEqual({ light: '#FFFF00', dark: '#FFFF00' })
+    expect(e.contrast).toEqual(explainAppearance({ theme: 'workbench', appearance: { accent: '#FFFF00' } }).contrast)
+    expect(e.contrast.find((c) => c.mode === 'light' && c.check === 'link')?.passes).toBe(false)
+    expect(row(e.values, 'accent.light')).toMatchObject({ source: 'preset', overriddenBy: 'colors.primary' })
+  })
+
+  it('should let colors.primary win over appearance.accent and themeOverrides accent', () => {
+    const e = explainAppearance({
+      appearance: { accent: '#0E7A63' },
+      themeOverrides: { colors: { light: { accent: '#123456' } } },
+      colors: { primary: '#FFFF00' },
+    })
+    expect(e.accent).toEqual({ light: '#FFFF00', dark: '#FFFF00' })
+  })
+
+  it('should take a themeOverrides accent over the appearance accent, per mode', () => {
+    const e = explainAppearance({ appearance: { accent: '#0E7A63' }, themeOverrides: { colors: { dark: { accent: '#3FC5A0' } } } })
+    expect(e.accent).toEqual({ light: '#0E7A63', dark: '#3FC5A0' })
+    expect(row(e.values, 'accent.dark')?.overriddenBy).toBe('themeOverrides.colors.dark.accent')
+    expect(row(e.values, 'accent.light')?.overriddenBy).toBeUndefined()
+  })
+
+  it('should take the organization theme\'s themeOverrides accent under the site\'s own', () => {
+    const org: FetchedOrgTheme = { ref: '@acme/brand', slug: 'brand', preset: 'workbench', appearance: {}, themeOverrides: { colors: { light: { accent: '#AA0000' } } }, version: 1, pinned: false }
+    expect(renderedAccent({}, '#0E7A63', 'light', org)).toEqual({ value: '#AA0000', from: '@acme/brand' })
+    expect(renderedAccent({ themeOverrides: { colors: { light: { accent: '#00AA00' } } } }, '#0E7A63', 'light', org)).toEqual({ value: '#00AA00', from: 'themeOverrides.colors.light.accent' })
+  })
+
+  it('should ignore an accent override that is not a hex colour, as the renderer does', () => {
+    expect(renderedAccent({ colors: { primary: 'tomato' }, themeOverrides: { colors: { light: { accent: 'rgb(1,2,3)' } } } }, '#0E7A63', 'light')).toEqual({ value: '#0E7A63' })
   })
 
   it('should pass the resolver issues through', () => {

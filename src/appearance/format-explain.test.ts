@@ -43,6 +43,12 @@ describe('formatExplanation', () => {
     expect(text).toContain('organization theme @acme/brand (version 4, follows the latest)')
   })
 
+  it('should head the contrast with the accent that renders when colors.primary overrides it', () => {
+    const text = plain(formatExplanation(explainAppearance({ theme: 'workbench', colors: { primary: '#FFFF00' } }), 'syntext.json'))
+    expect(text).toContain('Contrast (accent #FFFF00 on the workbench page background)')
+    expect(text).toMatch(/accent\.light\s+\S+\s+preset\s+.*\(overridden by colors\.primary\)/)
+  })
+
   it('should name both accents when they differ', () => {
     const text = plain(formatExplanation(explainAppearance({ appearance: { accent: { light: '#0E7A63', dark: '#3FC5A0' } } }), 'syntext.json'))
     expect(text).toContain('Contrast (accent #0E7A63 light, #3FC5A0 dark on the workbench page background)')
