@@ -20,7 +20,7 @@ layout: wide
 <Hero title="${attr(o.title)}" description="${attr(description)}">
   <SearchBar mode="both" />
 
-  [Get started](/quickstart) [Ask](/ask)
+  [Get started](/quickstart)
 </Hero>
 
 <SectionCards />

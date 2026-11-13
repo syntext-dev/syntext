@@ -10,7 +10,8 @@ describe('starterIndexMdx', () => {
     expect(mdx).toContain('<Hero title="Acme docs"')
     expect(mdx).toContain('<SectionCards />')
     expect(mdx).toContain('<LatestUpdates count={3} />')
-    expect(mdx).toContain('  [Get started](/quickstart) [Ask](/ask)\n')
+    expect(mdx).toContain('  [Get started](/quickstart)\n</Hero>')
+    expect(mdx).not.toContain('/ask')
     expect(mdx).not.toContain('API reference')
     // Uses the home components, so the generated-home deprecation does not fire.
     expect(scanPage('index.mdx', mdx).usages).toEqual([])
