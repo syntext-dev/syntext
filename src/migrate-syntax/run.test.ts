@@ -100,4 +100,46 @@ describe('migrateSyntax', () => {
     expect(r.configFile).toBeNull()
     expect(await read('docs/a.mdx')).toBe('<Tip>x</Tip>\n')
   })
+
+  describe('generated home (home-to-mdx)', () => {
+    const v2 = { 'syntext.json': '{\n  "name": "Acme",\n  "theme": "paper"\n}\n', 'docs/guides/a.mdx': '---\ntitle: A\n---\n' }
+
+    it('should write the implicit home as components from the local files, and be idempotent', async () => {
+      const root = await site({ ...v2, 'docs/index.mdx': '---\ntitle: Welcome\n---\n\nHello.\n' })
+      const r = await migrateSyntax({ rootDir: root, dryRun: false, applyV2: false, items })
+      const text = await read('docs/index.mdx')
+      expect(text).toStartWith('---\ntitle: Welcome\nlayout: wide\n---\n\n<Hero title="How can we help?"')
+      expect(text).toEndWith('\nHello.\n')
+      expect(r.applied).toEqual([expect.objectContaining({ code: 'frontmatter.implicit-home', file: 'docs/index.mdx' })])
+      expect(r.home).toEqual({ file: 'docs/index.mdx', from: 'local', reason: expect.stringContaining('not logged in') })
+      expect(r.remaining).toEqual([])
+      const again = await migrateSyntax({ rootDir: root, dryRun: false, applyV2: false, items })
+      expect(again.applied).toEqual([])
+      expect(again.files).toEqual([])
+    })
+
+    it('should use the site data the provider gives (the last build) and show it in a dry run', async () => {
+      const root = await site({ ...v2, 'docs/index.mdx': '---\ntitle: Welcome\nhome:\n  hero:\n    title: Acme\n---\n' })
+      const homeSite = async () => ({ from: 'last-build' as const, mdx: '<Hero title="Acme" />\n', warnings: [] })
+      const r = await migrateSyntax({ rootDir: root, dryRun: true, applyV2: false, items, homeSite })
+      expect(r.home).toEqual({ file: 'docs/index.mdx', from: 'last-build' })
+      expect(r.files[0]?.diff).toContain('+<Hero title="Acme" />')
+      expect(r.files[0]?.diff).toContain('-home:')
+      expect(await read('docs/index.mdx')).toContain('home:')
+    })
+
+    it('should leave a v1 site\'s index page alone', async () => {
+      const root = await site({ 'syntext.json': '{ "name": "A", "theme": "default" }\n', 'docs/index.mdx': '---\ntitle: Welcome\n---\n' })
+      const r = await migrateSyntax({ rootDir: root, dryRun: false, applyV2: false, items })
+      expect(r.applied).toEqual([])
+      expect(r.home).toBeUndefined()
+    })
+  })
+
+  it('should report page rules it does not know instead of skipping them', async () => {
+    const root = await site({ 'docs/a.mdx': '---\ntitle: A\n---\n' })
+    const future = { ...items[0]!, code: 'frontmatter.future', kind: 'frontmatter' as const, rewrite: { type: 'split-page' } as unknown as (typeof items)[number]['rewrite'] }
+    const r = await migrateSyntax({ rootDir: root, dryRun: false, applyV2: false, items: [...items, future] })
+    expect(r.unsupported).toEqual(['frontmatter.future'])
+  })
 })

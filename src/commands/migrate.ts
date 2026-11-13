@@ -16,20 +16,26 @@ type MigrationResult = {
 }
 
 export const migrateCommand = new Command('migrate')
-  .description('Rewrite deprecated Syntext syntax in place (config keys, frontmatter keys, MDX tags and props), or import docs from another platform with --from')
+  .description('Rewrite deprecated Syntext syntax in place (config keys, frontmatter keys, MDX tags and props, and the generated docs home as home components in index.mdx), or import docs from another platform with --from')
   .option('--from <platform>', 'Import from another platform instead: mintlify, docusaurus, gitbook or readme')
   .option('-d, --dir <dir>', 'Project folder that holds syntext.json; with --from, the source docs folder', '.')
   .option('-o, --output <dir>', 'Output directory (with --from)', 'docs')
   .option('--json', 'Output result as JSON')
   .option('--dry-run', 'Show what would change (a diff for Syntext syntax) without writing files')
   .option('--v2', 'Also apply rewrites that move values into appearance, which switches a v1 site to doc engine v2')
-  .option('--offline', 'Use the deprecation table bundled with stx instead of fetching the published one')
+  .option('--offline', 'Use the deprecation table bundled with stx instead of fetching the published one, and the local files for the home conversion')
   .addHelpText('after', `
 Examples:
   $ stx migrate --dry-run          Show the diff for every deprecated form
   $ stx migrate                    Rewrite them in place (run twice: nothing changes)
   $ stx migrate --v2               Also move colors, fonts and style flags into appearance
-  $ stx migrate --from mintlify    Import a Mintlify site`)
+  $ stx migrate --from mintlify    Import a Mintlify site
+
+The generated docs home (doc engine v2) stops on 27 November 2026. stx migrate writes it
+into docs/index.mdx as home components (<Hero title>, <SectionCards>, <LatestUpdates>, …)
+with layout: wide, so the page looks the same. It uses the last build's site data
+(logged in, with a projectId in syntext.json), otherwise the local files, and says which.
+A rule in the published table that this stx cannot apply is listed: update stx.`)
   .action(async (options) => {
     if (!options.from) {
       process.exitCode = await runSyntaxMigrate({ dir: options.dir, dryRun: options.dryRun, json: options.json, v2: options.v2, offline: options.offline })

@@ -20,6 +20,47 @@ describe('checkSyntax', () => {
     expect(r.issues).toEqual([])
   })
 
+  describe('generated home', () => {
+    const home = '---\ntitle: Home\nhome:\n  hero:\n    title: Acme docs\n---\n'
+    const v2 = config('{ "name": "A", "theme": "paper" }')
+
+    it('should warn about home frontmatter on a v2 index page, in the build\'s words and with the date', () => {
+      const r = checkSyntax({ config: v2, pages: [{ file: 'docs/index.mdx', docsFile: 'index.mdx', source: home }] })
+      expect(r.issues).toEqual([expect.objectContaining({ file: 'docs/index.mdx', line: 3, type: 'warning', code: 'frontmatter.home' })])
+      expect(r.issues[0]?.message).toContain('stops on 27 November 2026')
+      expect(r.usages[0]).toMatchObject({ file: 'docs/index.mdx', code: 'frontmatter.home' })
+    })
+
+    it('should warn about the implicit home on a v2 index page with neither home nor home components', () => {
+      const r = checkSyntax({ config: v2, pages: [{ file: 'docs/index.mdx', docsFile: 'index.mdx', source: '---\ntitle: Home\n---\nHi\n' }] })
+      expect(r.issues).toEqual([expect.objectContaining({ line: 1, code: 'frontmatter.implicit-home' })])
+      expect(r.issues[0]?.message).toContain('add `home: false`')
+    })
+
+    it('should not warn once the index opts in with home: false or a home component', () => {
+      for (const source of ['---\nhome: false\n---\nHi\n', '---\ntitle: Home\n---\n<Hero title="Acme" />\n', '<SectionCards />\n']) {
+        expect(checkSyntax({ config: v2, pages: [{ file: 'docs/index.mdx', docsFile: 'index.mdx', source }] }).issues).toEqual([])
+      }
+    })
+
+    it('should only look at the docs root index page', () => {
+      const r = checkSyntax({ config: v2, pages: [{ file: 'docs/guides/index.mdx', docsFile: 'guides/index.mdx', source: home }] })
+      expect(r.issues).toEqual([])
+    })
+
+    it('should say nothing on a v1 site, where the generated home is not deprecated', () => {
+      const r = checkSyntax({ config: config('{ "name": "A", "theme": "default" }'), pages: [{ file: 'docs/index.mdx', docsFile: 'index.mdx', source: home }] })
+      expect(r.issues).toEqual([])
+      expect(r.usages).toEqual([])
+    })
+
+    it('should report appearance.layout.home once, in the resolver\'s words', () => {
+      const r = checkSyntax({ config: config('{\n  "theme": "paper",\n  "appearance": { "layout": { "home": "pill" } }\n}'), pages: [] })
+      expect(r.issues.map((i) => i.message)).toEqual([expect.stringContaining('appearance.layout.home is deprecated and stops working on 27 November 2026')])
+      expect(r.usages.map((u) => u.code)).toEqual(['config.layout-home'])
+    })
+  })
+
   it('should warn about deprecated config keys with the line and the backend wording', () => {
     const r = checkSyntax({ config: config('{\n  "colors": {\n    "accent": "#2AC3DE"\n  }\n}\n'), pages: [] })
     expect(r.issues).toEqual([{
@@ -85,9 +126,9 @@ describe('checkSyntax', () => {
   })
 
   it('should report frontmatter values outside their enum', () => {
-    const r = checkSyntax({ config: null, pages: [{ file: 'docs/a.mdx', source: '---\ntitle: A\nlayout: wide\n---\n' }] })
+    const r = checkSyntax({ config: null, pages: [{ file: 'docs/a.mdx', source: '---\ntitle: A\nlayout: huge\n---\n' }] })
     expect(r.issues[0]).toMatchObject({ line: 3, type: 'warning' })
-    expect(r.issues[0]?.message).toContain('"wide" is not a valid layout')
+    expect(r.issues[0]?.message).toContain('"huge" is not a valid layout')
   })
 
   it('should turn a config that does not parse into an error', () => {
@@ -157,6 +198,16 @@ describe('checkProjectSyntax', () => {
     await writeFile(join(dir, 'syntext.yml'), 'a: [1,\n')
     const r = await checkProjectSyntax(dir)
     expect(r.issues[0]).toMatchObject({ file: 'syntext.yml', type: 'error' })
+  })
+
+  it('should warn about the generated home on the docs root index page', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'stx-proj-'))
+    await mkdir(join(dir, 'docs/guides'), { recursive: true })
+    await writeFile(join(dir, 'syntext.json'), '{ "name": "A", "theme": "paper" }\n')
+    await writeFile(join(dir, 'docs/index.mdx'), '---\ntitle: Home\n---\nHi\n')
+    await writeFile(join(dir, 'docs/guides/index.mdx'), '---\ntitle: Guides\n---\nHi\n')
+    const r = await checkProjectSyntax(dir)
+    expect(r.issues.map((i) => `${i.file}:${i.line} ${i.code}`)).toEqual(['docs/index.mdx:1 frontmatter.implicit-home'])
   })
 
   it('should work without a config or a docs folder', async () => {

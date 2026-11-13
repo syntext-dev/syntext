@@ -60,6 +60,20 @@ describe('formatSummary', () => {
   it('should name rules this stx cannot apply', () => {
     expect(plain(formatSummary({ ...result, unsupported: ['config.future'] }, { source: 'remote' }))).toContain('config.future')
   })
+
+  it('should not claim it is done when only rules it cannot apply are left', () => {
+    const text = plain(formatSummary({ ...result, applied: [], held: [], remaining: [], files: [], unsupported: ['frontmatter.future'] }, { source: 'remote' }))
+    expect(text).toContain('Nothing rewritten, but the deprecation table has rules this stx cannot apply.')
+    expect(text).toContain('This stx cannot apply frontmatter.future. Update stx and run it again.')
+    expect(text).not.toContain('No deprecated syntax found.')
+  })
+
+  it('should say where the home conversion took the site data from', () => {
+    const fromBuild = plain(formatSummary({ ...result, home: { file: 'docs/index.mdx', from: 'last-build' } }, { source: 'remote' }))
+    expect(fromBuild).toContain("docs/index.mdx: the home components follow the last build's site data.")
+    const local = plain(formatSummary({ ...result, home: { file: 'docs/index.mdx', from: 'local', reason: 'not logged in' } }, { source: 'remote' }))
+    expect(local).toContain('docs/index.mdx: the home components follow the local files (not logged in).')
+  })
 })
 
 describe('colorDiff', () => {

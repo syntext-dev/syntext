@@ -17,7 +17,8 @@ import type { TableItem } from '../syntax/table-source'
 import { rewriteConfig, type Change, type Held } from './config-rewrite'
 import { unifiedDiff } from './diff'
 import { JsonTextEditor } from './json-edit'
-import { rewritePage } from './page-rewrite'
+import { HOME_CODES, homeSiteProvider, rewriteHome, type HomeSiteData, type HomeSiteProvider } from './home-rewrite'
+import { rewritePage, unsupportedPageRules } from './page-rewrite'
 import { YamlTextEditor } from './yaml-edit'
 
 export type FileChange = { file: string; renamedTo?: string; diff: string }
@@ -29,6 +30,8 @@ export type SyntaxMigrationResult = {
   held: Held[]
   /** Codes in the table this stx does not know how to apply. */
   unsupported: string[]
+  /** The index page's generated home, when it was converted: where the site data came from (`local` names why the API was not used). */
+  home?: { file: string; from: HomeSiteData['from']; reason?: string }
   files: FileChange[]
   /** What `stx check` still reports after the migration: unknown keys and invalid values. */
   remaining: SyntaxIssue[]
@@ -43,7 +46,17 @@ async function listPages(docsDir: string): Promise<string[]> {
   return out.sort()
 }
 
-export async function migrateSyntax(opts: { rootDir: string; dryRun: boolean; applyV2: boolean; items: readonly TableItem[] }): Promise<SyntaxMigrationResult> {
+/** No API: the site data for the home conversion comes from the local files. */
+const LOCAL_ONLY: HomeSiteProvider = homeSiteProvider({ apiUrl: '', token: null, projectId: null })
+
+export async function migrateSyntax(opts: {
+  rootDir: string
+  dryRun: boolean
+  applyV2: boolean
+  items: readonly TableItem[]
+  /** Site data for the `home-to-mdx` rule (the last build, through the API); the local files by default. */
+  homeSite?: HomeSiteProvider
+}): Promise<SyntaxMigrationResult> {
   const { docsRoot } = await resolveDocsRoot(opts.rootDir)
   const rel = (abs: string) => relative(opts.rootDir, abs) || '.'
   const applied: Change[] = []
@@ -81,17 +94,29 @@ export async function migrateSyntax(opts: { rootDir: string; dryRun: boolean; ap
     if (editor.text !== loaded.content || renameTo) pending.push({ abs, file, before: loaded.content, after: editor.text, ...(renameTo ? { renameTo } : {}) })
   }
 
+  unsupported.push(...unsupportedPageRules(opts.items))
+  // After the config rules: `--v2` can switch the site to doc engine v2, where the generated home is deprecated.
+  const siteIsV2 = newConfig ? resolveAppearance(newConfig.config).v2 : false
   const docsDir = join(docsRoot, 'docs')
-  const pages: Array<{ file: string; source: string }> = []
-  for (const f of await listPages(docsDir)) {
+  const docsFiles = await listPages(docsDir)
+  const pages: Array<{ file: string; source: string; docsFile: string }> = []
+  let home: SyntaxMigrationResult['home']
+  for (const f of docsFiles) {
     const abs = join(docsDir, f)
     const file = rel(abs)
     const before = await readFile(abs, 'utf-8')
     const r = rewritePage(file, before, opts.items)
     applied.push(...r.applied)
     held.push(...r.held)
-    pages.push({ file, source: r.text })
-    if (r.text !== before) pending.push({ abs, file, before, after: r.text })
+    let text = r.text
+    const h = await rewriteHome({ file, docsFile: f, source: text, items: opts.items, siteIsV2, ctx: { config: newConfig?.config ?? null, docsFiles }, provider: opts.homeSite ?? LOCAL_ONLY })
+    if (h.applied.length && h.from) {
+      applied.push(...h.applied)
+      text = h.text
+      home = { file, from: h.from, ...(h.reason ? { reason: h.reason } : {}) }
+    }
+    pages.push({ file, source: text, docsFile: f })
+    if (text !== before) pending.push({ abs, file, before, after: text })
   }
 
   const files: FileChange[] = pending.map((p) => {
@@ -108,6 +133,6 @@ export async function migrateSyntax(opts: { rootDir: string; dryRun: boolean; ap
   }
 
   const after = checkSyntax({ config: newConfig, pages })
-  const remaining = after.issues.filter((i) => !i.code || i.code.endsWith('.unknown-key') || i.code === 'appearance' || i.code === 'theme' || unsupported.includes(i.code))
-  return { dryRun: opts.dryRun, configFile: configName, applied, held, unsupported: [...new Set(unsupported)], files, remaining }
+  const remaining = after.issues.filter((i) => !i.code || i.code.endsWith('.unknown-key') || i.code === 'appearance' || i.code === 'theme' || unsupported.includes(i.code) || (HOME_CODES as readonly string[]).includes(i.code))
+  return { dryRun: opts.dryRun, configFile: configName, applied, held, unsupported: [...new Set(unsupported)], files, remaining, ...(home ? { home } : {}) }
 }
