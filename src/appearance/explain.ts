@@ -8,6 +8,10 @@
  *   values: preset → v1 theme mapping → v1 features flags → organization theme → appearance
  *   tokens: appearance → organization theme's themeOverrides → themeOverrides
  *           (legacy fonts folded in, explicit wins) → legacy colors (last)
+ *
+ * The contrast is measured on the accent v2 actually renders: the resolved
+ * accent, then `themeOverrides.colors.<mode>.accent`, then legacy
+ * `colors.primary` (syntext-backend `services/v2/appearance-tokens.ts`).
  */
 import { accentContrast, type ContrastCheck } from './contrast'
 import type { FetchedOrgTheme } from './org-theme-fetch'
@@ -24,6 +28,8 @@ export type AppearanceExplanation = {
   v2: boolean
   theme: string | null
   preset: PresetName
+  /** The accent v2 renders in each mode, after themeOverrides and legacy colors.primary; the contrast is measured on it. */
+  accent: { light: string; dark: string }
   orgTheme?: OrgThemeStatus
   values: ExplainRow[]
   tokens: ExplainRow[]
@@ -113,6 +119,41 @@ function tokenRows(config: Record<string, unknown>, org?: FetchedOrgTheme): Expl
   return [...orgRows, ...own, ...legacy]
 }
 
+const HEX6 = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/
+
+/** Deep merge, `top` wins (syntext-backend `modules/appearance/theme-input.ts` `mergeOverrides`). */
+function mergeOverrides(base: Record<string, unknown>, top: unknown): Record<string, unknown> {
+  if (!isObject(top)) return base
+  const merge = (b: unknown, t: unknown): unknown => {
+    if (!isObject(b) || !isObject(t)) return t === undefined ? b : t
+    const out: Record<string, unknown> = { ...b }
+    for (const [k, v] of Object.entries(t)) out[k] = merge(b[k], v)
+    return out
+  }
+  return merge(base, top) as Record<string, unknown>
+}
+
+type RenderedAccent = { value: string; from?: string }
+
+/**
+ * The accent a v2 page renders in `mode`, and the key that set it when it is
+ * not the resolved appearance accent. Mirrors `finalAccent` in syntext-backend
+ * `services/v2/appearance-tokens.ts`; the build passes it the organization
+ * theme's themeOverrides merged under the site's own.
+ */
+export function renderedAccent(config: Record<string, unknown>, resolved: string, mode: 'light' | 'dark', org?: FetchedOrgTheme): RenderedAccent {
+  let out: RenderedAccent = { value: resolved }
+  const own = isObject(config.themeOverrides) && isObject(config.themeOverrides.colors) && isObject(config.themeOverrides.colors[mode]) ? config.themeOverrides.colors[mode] : undefined
+  const merged = mergeOverrides(mergeOverrides({}, org?.themeOverrides), config.themeOverrides)
+  const ov = isObject(merged.colors) ? merged.colors[mode] : undefined
+  if (isObject(ov) && typeof ov.accent === 'string' && HEX6.test(ov.accent)) {
+    out = { value: ov.accent, from: own && own.accent !== undefined ? `themeOverrides.colors.${mode}.accent` : (org?.ref ?? 'organization theme') }
+  }
+  const legacy = isObject(config.colors) ? config.colors.primary : undefined
+  if (typeof legacy === 'string' && HEX6.test(legacy)) out = { value: legacy, from: 'colors.primary' }
+  return out
+}
+
 function fromFor(path: string, source: AppearanceSource, ctx: { preset: string; theme: string; orgRef?: string; appearance: unknown }): string {
   switch (source) {
     case 'preset': return `${ctx.preset} preset`
@@ -147,6 +188,13 @@ export function explainAppearance(config: Record<string, unknown>, opts: { orgTh
     if (!org) issues = issues.filter((i) => i.path !== 'theme')
   }
 
-  const contrast = accentContrast({ accent: a.accent, background: (mode) => pageBackground(a.preset, mode) })
-  return { v2: result.v2, theme: theme || null, preset: a.preset, ...(orgTheme ? { orgTheme } : {}), values, tokens: tokenRows(config, org), contrast, issues }
+  const rendered = { light: renderedAccent(config, a.accent.light, 'light', org), dark: renderedAccent(config, a.accent.dark, 'dark', org) }
+  for (const mode of ['light', 'dark'] as const) {
+    const by = rendered[mode].from
+    const row = values.find((v) => v.path === `accent.${mode}`)
+    if (by && row && rendered[mode].value !== a.accent[mode]) row.overriddenBy = by
+  }
+  const accent = { light: rendered.light.value, dark: rendered.dark.value }
+  const contrast = accentContrast({ accent, background: (mode) => pageBackground(a.preset, mode) })
+  return { v2: result.v2, theme: theme || null, preset: a.preset, accent, ...(orgTheme ? { orgTheme } : {}), values, tokens: tokenRows(config, org), contrast, issues }
 }

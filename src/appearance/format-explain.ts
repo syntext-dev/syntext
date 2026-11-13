@@ -46,8 +46,7 @@ export function formatExplanation(e: AppearanceExplanation, configFile: string):
     out.push(...table(e.tokens))
   }
 
-  const accent = e.values.filter((v) => v.path.startsWith('accent.')).map((v) => v.value)
-  const shown = accent[0] === accent[1] ? accent[0] : accent.join(' light, ') + ' dark'
+  const shown = e.accent.light === e.accent.dark ? e.accent.light : `${e.accent.light} light, ${e.accent.dark} dark`
   out.push('', chalk.bold(`  Contrast (accent ${shown} on the ${e.preset} page background)`))
   for (const c of e.contrast) {
     const mark = c.passes ? chalk.green('✓') : chalk.red('✗')

@@ -84,6 +84,14 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKeySpec[] = [
     note: 'Documented in components/audience-gate.mdx and the audience-gating guide, not in frontmatter.mdx.',
   },
 
+  // Docs home (doc engine v2)
+  {
+    key: 'home',
+    type: 'object',
+    description: 'The docs home, built from blocks: { hero: { title, description, actions, install }, blocks: [{ type: quickstart | cards | api | sdks | changelog | popular | commands | ask | support, ... }] }. Blocks not given are filled from the site.',
+    note: 'Index page of doc engine v2 sites only; v1 sites ignore it. Validated by services/v2/home-frontmatter.ts: unknown block types and fields are dropped with a "did you mean" build warning.',
+  },
+
   // API protocol
   {
     key: 'protocol',
