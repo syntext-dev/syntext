@@ -197,7 +197,7 @@ export async function deployPreview(
     })
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))
+      const err = (await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))) as { error?: { message?: string } }
       spinner.fail(chalk.red(err.error?.message ?? `Deploy failed (${res.status})`))
       return null
     }

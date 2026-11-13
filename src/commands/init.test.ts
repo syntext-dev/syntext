@@ -1,6 +1,7 @@
 import { describe, it, expect, spyOn, beforeEach, afterEach } from 'bun:test'
 import * as credentials from '../lib/credentials'
-import { createRemoteProject } from './init'
+import { createRemoteProject, generateConfig, SYNTEXT_SCHEMA_URL } from './init'
+import { checkSyntax } from '../syntax/check-syntax'
 import { SessionRevokedError, userAgent } from '../lib/api'
 
 function json(status: number, body: unknown): Response {
@@ -59,5 +60,25 @@ describe('init', () => {
       await expect(createRemoteProject('docs', 'tok')).rejects.toBeInstanceOf(SessionRevokedError)
       expect(credentials.clearCredentials).toHaveBeenCalledTimes(1)
     })
+  })
+})
+
+describe('generateConfig', () => {
+  it('should put the $schema URL first', () => {
+    const text = generateConfig('acme')
+    expect(SYNTEXT_SCHEMA_URL).toBe('https://syntext.dev/schema/syntext.json')
+    expect(Object.keys(JSON.parse(text))[0]).toBe('$schema')
+    expect(JSON.parse(text).$schema).toBe(SYNTEXT_SCHEMA_URL)
+  })
+
+  it('should pass stx check with no deprecated or unknown keys', () => {
+    const content = generateConfig('acme')
+    expect(checkSyntax({ config: { fileName: 'syntext.json', content, config: JSON.parse(content) }, pages: [] }).issues).toEqual([])
+  })
+
+  it('should end with a newline and use the project name', () => {
+    const text = generateConfig('acme')
+    expect(text.endsWith('}\n')).toBe(true)
+    expect(JSON.parse(text).name).toBe('acme')
   })
 })
