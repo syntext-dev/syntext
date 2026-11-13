@@ -23,9 +23,12 @@ export function stripCodeBlocks(content: string): string {
 
 const ASSET_EXTENSIONS = /\.(png|jpe?g|gif|svg|webp|ico|pdf|mp4|webm|zip|txt|json|xml|css|js)$/i
 
+/** Routes the build generates rather than a docs page: /ask (and shared answers under /ask/s/). */
+const BUILT_IN_ROUTE = /^\/ask(\/|$)/
+
 /**
  * Find internal links that don't resolve to a known docs page.
- * Skips code blocks, strips #anchors, and ignores static asset paths.
+ * Skips code blocks, strips #anchors, and ignores static asset paths and built-in routes.
  */
 export function findBrokenLinks(content: string, files: string[]): string[] {
   const broken: string[] = []
@@ -39,6 +42,7 @@ export function findBrokenLinks(content: string, files: string[]): string[] {
     const pathOnly = href.split('#')[0].split('?')[0]
     if (!pathOnly || pathOnly === '/') continue
     if (href.startsWith('/public/') || ASSET_EXTENSIONS.test(pathOnly)) continue
+    if (BUILT_IN_ROUTE.test(pathOnly)) continue
 
     const targetSlug = pathOnly.replace(/^[./]+/, '').replace(/\/$/, '')
     const targetFile = files.find(

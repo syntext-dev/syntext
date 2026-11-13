@@ -106,7 +106,7 @@ jobs:
 
             const formula = [
               'class Stx < Formula',
-              '  desc "AI-powered developer documentation CLI"',
+              '  desc "Write, preview and publish Syntext docs from your terminal"',
               '  homepage "https://syntext.dev"',
               `  version "${version}"`,
               '  license "MIT"',

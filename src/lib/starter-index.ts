@@ -10,7 +10,7 @@ const yamlString = (s: string) => (/^[\w .,!?'()-]*$/.test(s) && !/^[\s'-]/.test
 const attr = (s: string) => s.replace(/"/g, '&quot;')
 
 export function starterIndexMdx(o: { title: string; description?: string }): string {
-  const description = o.description?.trim() || 'Guides, API reference and answers, in one place.'
+  const description = o.description?.trim() || 'Guides and answers, in one place.'
   return `---
 title: ${yamlString(o.title)}
 description: ${yamlString(description)}
@@ -20,7 +20,7 @@ layout: wide
 <Hero title="${attr(o.title)}" description="${attr(description)}">
   <SearchBar mode="both" />
 
-  [Get started](/quickstart) [API reference](/api-reference)
+  [Get started](/quickstart) [Ask](/ask)
 </Hero>
 
 <SectionCards />

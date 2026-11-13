@@ -84,6 +84,11 @@ describe('findBrokenLinks', () => {
     expect(findBrokenLinks('[x](/api-reference/overview) [y](/)', files)).toEqual([])
   })
 
+  it('should accept the built-in /ask route the build generates', () => {
+    expect(findBrokenLinks('[Ask](/ask) [Shared](/ask/s/abc123) [q](/ask?q=hi)', files)).toEqual([])
+    expect(findBrokenLinks('[x](/asking)', files)).toEqual(['/asking'])
+  })
+
   it('should report multiple broken links in one document', () => {
     const content = '[a](/gone) and [b](/also/gone)'
     expect(findBrokenLinks(content, files)).toEqual(['/gone', '/also/gone'])

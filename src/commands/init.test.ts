@@ -98,16 +98,33 @@ describe('generateConfig', () => {
       expect(files['docs/index.mdx']).toContain('# Welcome to acme')
       expect(files['docs/index.mdx']).not.toContain('<Hero')
       expect(check(files).issues).toEqual([])
+      for (const f of pages(files)) expect(findBrokenLinks(files[`docs/${f}`]!, pages(files))).toEqual([])
     })
 
-    it('should write the backend\'s starter index.mdx on a v2 site, with the pages its hero links to', () => {
+    it('should write neutral starter text that assumes no code or package', () => {
+      for (const files of [starterFiles('acme'), starterFiles('acme', { preset: 'paper' })]) {
+        const text = Object.entries(files).filter(([f]) => f.startsWith('docs/')).map(([, c]) => c).join('\n')
+        expect(text).not.toContain('in sync with your codebase')
+        expect(text).not.toContain('npm install')
+        expect(text).not.toContain('bun add')
+        expect(text).not.toContain('](/api')
+        expect(text).toContain('## Install')
+      }
+    })
+
+    it('should write no API reference page unless the author adds one', () => {
+      for (const files of [starterFiles('acme'), starterFiles('acme', { preset: 'paper' })]) {
+        expect(Object.keys(files).some((f) => f.includes('api'))).toBe(false)
+        expect(files['syntext.json']).not.toContain('api-reference')
+      }
+    })
+
+    it('should write the backend\'s starter index.mdx on a v2 site, with the page its hero links to', () => {
       const files = starterFiles('acme', { preset: 'paper' })
       const config = JSON.parse(files['syntext.json']!)
       expect(config.theme).toBe('paper')
-      expect(config.navigation).toEqual([
-        { group: 'Getting Started', pages: ['index', 'quickstart'] },
-        { group: 'API reference', pages: ['api-reference/index'] },
-      ])
+      expect(Object.keys(files).sort()).toEqual(['docs/index.mdx', 'docs/quickstart.mdx', 'syntext.json'])
+      expect(config.navigation).toEqual([{ group: 'Getting Started', pages: ['index', 'quickstart'] }])
       expect(files['docs/index.mdx']).toBe(starterIndexMdx({ title: 'acme' }))
       expect(files['docs/index.mdx']).toContain('layout: wide')
       expect(files['docs/quickstart.mdx']).toContain('title: Quickstart')
