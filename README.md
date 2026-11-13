@@ -63,6 +63,12 @@ stx build --token <api-key>
 
 `stx login --token <token>` stores a CLI login token (it is checked against your profile, so it does not accept project API keys).
 
+### Waiting for the server build
+
+`stx deploy` and `stx build` compile on the server, and builds of one project run one at a time. When another build of the project is already running — for example the build GitHub started for your latest merge — the spinner says which one it is waiting for (`Waiting for build 1a2b3c4d (a push, commit abc1234, compiling) to finish...`). The CLI waits up to 20 minutes in the queue and up to 10 minutes for the build itself; if either runs out, the build keeps going on the server and publishes when it finishes.
+
+If a production build requested after yours is already live when yours would publish, yours stops without publishing and the command fails with `Superseded: build <id> was requested later and is already live, so this build did not publish`. Run `stx deploy` again to publish your files on top of it.
+
 ### Plan limits
 
 When `stx projects create` hits your plan's project limit, the error links to **Billing** at `https://app.syntext.dev/billing`.

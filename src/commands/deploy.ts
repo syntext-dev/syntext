@@ -8,6 +8,7 @@ import type { SyntextConfig } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
 import { apiFetch, jsonError } from '../lib/api'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
+import { waitForBuild, type QueuedBehind } from '../lib/build-wait'
 
 /**
  * Every OpenAPI spec path a deploy must upload, derived from the `openapi`
@@ -281,13 +282,24 @@ export const deployCommand = new Command('deploy')
       }
 
       const { data } = await res.json() as {
-        data: { buildId: string; status: string; branch: string; isPreview: boolean; fileCount: number; logsUrl: string }
+        data: { buildId: string; status: string; branch: string; isPreview: boolean; fileCount: number; logsUrl: string; queuedBehind?: QueuedBehind | null }
       }
 
-      // Stream build logs until completion
+      // Wait for the build. Behind another build of this project (e.g. the
+      // webhook build of a merge), it waits for that one instead of timing out.
       if (spinner) spinner.text = 'Building on server...'
 
-      const buildResult = await waitForBuild(apiUrl, token, projectId, data.buildId, spinner)
+      const buildResult = await waitForBuild({
+        apiUrl,
+        token,
+        projectId,
+        buildId: data.buildId,
+        queuedBehind: data.queuedBehind,
+        labels: DEPLOY_STATUS_LABELS,
+        onProgress: (text) => {
+          if (spinner) spinner.text = text
+        },
+      })
 
       if (buildResult.status === 'deployed') {
         if (options.json) {
@@ -325,58 +337,11 @@ export const deployCommand = new Command('deploy')
     }
   })
 
-async function waitForBuild(
-  apiUrl: string,
-  token: string,
-  projectId: string,
-  buildId: string,
-  spinner: ReturnType<typeof ora> | null,
-): Promise<{ status: string; deployUrl?: string; pageCount?: number; durationMs?: number; error?: string }> {
-  const maxWait = 120_000 // 2 minutes
-  const pollInterval = 2_000
-  const start = Date.now()
-
-  while (Date.now() - start < maxWait) {
-    const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}/builds/${buildId}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    })
-
-    if (!res.ok) {
-      await Bun.sleep(pollInterval)
-      continue
-    }
-
-    const { data: build } = await res.json() as {
-      data: { status: string; deployUrl: string | null; pageCount: number | null; durationMs: number | null; error: string | null }
-    }
-
-    if (spinner) {
-      const statusMap: Record<string, string> = {
-        queued: 'Queued...',
-        uploading: 'Uploading...',
-        cloning: 'Preparing source...',
-        parsing: 'Parsing documentation...',
-        compiling: 'Compiling pages...',
-        deploying: 'Deploying to CDN...',
-      }
-      spinner.text = statusMap[build.status] || `Status: ${build.status}`
-    }
-
-    if (build.status === 'deployed') {
-      return {
-        status: 'deployed',
-        deployUrl: build.deployUrl || undefined,
-        pageCount: build.pageCount || undefined,
-        durationMs: build.durationMs || undefined,
-      }
-    }
-
-    if (build.status === 'failed') {
-      return { status: 'failed', error: build.error || 'Build failed' }
-    }
-
-    await Bun.sleep(pollInterval)
-  }
-
-  return { status: 'failed', error: 'Build timed out after 2 minutes' }
+const DEPLOY_STATUS_LABELS: Record<string, string> = {
+  queued: 'Queued...',
+  uploading: 'Uploading...',
+  cloning: 'Preparing source...',
+  parsing: 'Parsing documentation...',
+  compiling: 'Compiling pages...',
+  deploying: 'Deploying to CDN...',
 }
