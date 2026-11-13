@@ -116,6 +116,12 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKeySpec[] = [
     description: 'Credential scheme for the "Try it" console: { name, label, in: header | query, prefix }. Overrides syntext.json auth.',
     note: 'Read but not documented in frontmatter.mdx.',
   },
+  {
+    key: 'requestLanguages',
+    type: 'string[]',
+    description: 'Languages of the generated request sample on this endpoint page, in tab order (curl, javascript, typescript, node, python, python-httpx, go, ruby, php, java, csharp, rust, swift, kotlin, http). Overrides syntext.json api.requestLanguages.',
+    note: 'REST endpoint pages (protocol: rest), doc engine v2 only. Ignored when the page has its own <RequestExample> or example section.',
+  },
   { key: 'event', type: 'string', protocol: 'websocket', description: 'Event name, e.g. order.created. Also read on event pages.' },
   { key: 'direction', type: 'string', protocol: 'websocket', description: 'Message direction, e.g. server-to-client.' },
   { key: 'operation', type: 'string', protocol: 'graphql', description: 'Operation kind: query, mutation or subscription. Defaults to query.' },

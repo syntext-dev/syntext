@@ -10,6 +10,12 @@
 export const LAYOUT_SWITCHES = {
   shell: ['bordered', 'sheet', 'enterprise', 'minimal', 'floating', 'grid', 'focus'],
   header: ['command', 'pill', 'tabs', 'mega', 'simple', 'island', 'index', 'path'],
+  /**
+   * The docs home's layout. Each is drawn for the header of the same name, but
+   * the two are separate: a preset's home is its own header value, and
+   * changing `header` changes the header bar only (switch-isolation.ts).
+   */
+  home: ['command', 'pill', 'tabs', 'mega', 'simple', 'island', 'index', 'path'],
   nav: ['tree', 'pills', 'mono', 'chevrons', 'plain', 'dock', 'chapters', 'overlay'],
   toc: ['progress', 'pills', 'dots', 'rule', 'plain', 'float', 'ruler', 'ticks'],
   groups: ['collapsible', 'open'],
