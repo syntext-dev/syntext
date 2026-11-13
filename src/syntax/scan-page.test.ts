@@ -7,6 +7,14 @@ describe('scanPage', () => {
     expect(r).toEqual({ usages: [], issues: [] })
   })
 
+  it('should accept Update tags written as an array like the documented string', () => {
+    // The hosted compiler (stx build and stx dev build there) turns tags={["a", "b"]} into tags="a, b".
+    const asArray = scanPage('changelog.mdx', '---\ntitle: Changelog\n---\n<Update title="v2.5" tags={["Feature", "API"]}>\n\nBody\n\n</Update>\n')
+    const asString = scanPage('changelog.mdx', '---\ntitle: Changelog\n---\n<Update title="v2.5" tags="Feature, API">\n\nBody\n\n</Update>\n')
+    expect(asArray).toEqual({ usages: [], issues: [] })
+    expect(asArray).toEqual(asString)
+  })
+
   it('should find renamed frontmatter keys with their lines', () => {
     const { usages } = scanPage('a.mdx', '---\ntitle: A\nnoIndex: true\nfullWidth: true\n---\nBody')
     expect(usages).toEqual([

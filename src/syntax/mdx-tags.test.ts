@@ -23,6 +23,11 @@ describe('findTags', () => {
     expect(tag.attrs.map((a) => [a.name, a.value])).toEqual([['defaultOpen', null], ['title', '"A > B"'], ['cols', '2']])
   })
 
+  it('should read an array expression attribute whole', () => {
+    const [t] = findTags('<Update title="v1" tags={["a", "b"]}>')
+    expect(t.attrs.map((a) => [a.name, a.value])).toEqual([['title', 'v1'], ['tags', '["a", "b"]']])
+  })
+
   it('should skip tags inside fences, inline code and HTML comments', () => {
     const src = '```mdx\n<Caution>x</Caution>\n```\nUse `<Caution>` here.\n<!-- <Caution> -->\n<Tip>ok</Tip>'
     expect(findTags(src).map((t) => t.name)).toEqual(['Tip', 'Tip'])
