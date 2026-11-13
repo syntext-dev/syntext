@@ -1,5 +1,5 @@
 import { describe, it, expect, spyOn, beforeEach, afterEach } from 'bun:test'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as credentials from '../lib/credentials'
@@ -213,5 +213,80 @@ describe('deploy session handling', () => {
 
   it('should describe --token as a login token or project API key', () => {
     expect(deployCommand.helpInformation()).toContain('project API key')
+  })
+})
+
+describe('deploy waiting behind another build', () => {
+  const realFetch = globalThis.fetch
+  let dir: string
+  let output: string[]
+  let polls: number
+  let buildBody: Record<string, unknown>
+  let spies: Array<{ mockRestore: () => void }>
+
+  class ExitError extends Error {
+    constructor(readonly code: number | undefined) {
+      super(`exit ${code}`)
+    }
+  }
+
+  beforeEach(async () => {
+    output = []
+    polls = 0
+    dir = await mkdtemp(join(tmpdir(), 'stx-deploy-queued-'))
+    await writeFile(join(dir, 'syntext.json'), JSON.stringify({ name: 'x', projectId: 'p1' }))
+    await mkdir(join(dir, 'docs'))
+    await writeFile(join(dir, 'docs', 'index.mdx'), '# Hi')
+    globalThis.fetch = Object.assign(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input)
+        if (init?.method === 'POST' && url.endsWith('/v1/projects/p1/deploy')) {
+          return Response.json({
+            data: {
+              buildId: 'build-cli-1', status: 'queued', branch: 'main', isPreview: false, fileCount: 2, logsUrl: '/x',
+              queuedBehind: { buildId: 'build-webhook-1', status: 'compiling', trigger: 'push', commitSha: 'abc1234' },
+            },
+          }, { status: 202 })
+        }
+        if (url.endsWith('/v1/projects/p1/builds/build-cli-1')) {
+          polls++
+          return Response.json({ data: buildBody })
+        }
+        return new Response('{}', { status: 404 })
+      },
+      { preconnect: realFetch.preconnect },
+    ) as typeof fetch
+    spies = [
+      spyOn(process, 'cwd').mockReturnValue('/'),
+      spyOn(credentials, 'loadCredentials').mockResolvedValue({ token: 'tok' }),
+      spyOn(process, 'exit').mockImplementation(((code?: number) => {
+        throw new ExitError(code)
+      }) as typeof process.exit),
+      spyOn(console, 'log').mockImplementation((...a: unknown[]) => {
+        output.push(a.map(String).join(' '))
+      }),
+    ]
+  })
+
+  afterEach(async () => {
+    for (const s of spies) s.mockRestore()
+    globalThis.fetch = realFetch
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('should report success once the build behind the webhook build deploys', async () => {
+    buildBody = { status: 'deployed', deployUrl: 'https://acme-docs.syntext.dev', pageCount: 1, durationMs: 900 }
+    await deployCommand.parseAsync(['--dir', dir, '--json'], { from: 'user' })
+    expect(JSON.parse(output.join(''))).toMatchObject({ success: true, buildId: 'build-cli-1', url: 'https://acme-docs.syntext.dev' })
+    expect(polls).toBe(1)
+  })
+
+  it('should explain a deploy the server superseded with a newer live build', async () => {
+    buildBody = { status: 'cancelled', error: 'Superseded: build b9 was requested later and is already live, so this build did not publish' }
+    const err = await deployCommand.parseAsync(['--dir', dir, '--json'], { from: 'user' }).catch((e) => e)
+    expect((err as ExitError).code).toBe(1)
+    const body = JSON.parse(output.join('')) as { success: boolean; error: string }
+    expect(body.success).toBe(false)
+    expect(body.error).toContain('Superseded: build b9')
   })
 })
