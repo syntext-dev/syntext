@@ -40,7 +40,7 @@ export const connectCommand = new Command('connect')
         if (res.status === 403) {
           throw new Error(`No access to project ${projectId}. Check your permissions.`)
         }
-        const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))
+        const err = (await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))) as { error?: { message?: string } }
         throw new Error(err.error?.message ?? `Failed to verify project (${res.status})`)
       }
 

@@ -151,7 +151,7 @@ export const deployCommand = new Command('deploy')
         })
 
         if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))
+          const err = (await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))) as { error?: { message?: string } }
           throw new Error(err.error?.message ?? `Promote failed (${res.status})`)
         }
 
@@ -276,7 +276,7 @@ export const deployCommand = new Command('deploy')
       })
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))
+        const err = (await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))) as { error?: { message?: string } }
         throw new Error(err.error?.message ?? `Deploy failed (${res.status})`)
       }
 

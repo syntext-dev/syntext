@@ -39,7 +39,7 @@ projectsCommand
       })
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))
+        const err = (await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))) as { error?: { message?: string } }
         const msg = err.error?.message ?? `Failed to create project (${res.status})`
 
         // Plan gating — surface limit errors clearly
@@ -97,7 +97,7 @@ projectsCommand
       })
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))
+        const err = (await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))) as { error?: { message?: string } }
         throw new Error(err.error?.message ?? `Failed to fetch projects (${res.status})`)
       }
 
@@ -160,7 +160,7 @@ projectsCommand
       })
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))
+        const err = (await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))) as { error?: { message?: string } }
         throw new Error(err.error?.message ?? `Failed to delete project (${res.status})`)
       }
 

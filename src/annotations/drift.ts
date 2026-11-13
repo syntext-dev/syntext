@@ -66,7 +66,7 @@ export function detectDrift(
   config: DriftConfig = {}
 ): DriftIssue[] {
   const issues: DriftIssue[] = []
-  const severity = config.strictness || 'error'
+  const severity: DriftIssue['severity'] = config.strictness === 'warn' ? 'warning' : 'error'
   const currentHashes = generateSignatureHashes(currentSymbols)
 
   // Build lookup maps

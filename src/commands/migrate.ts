@@ -515,7 +515,7 @@ async function collectFiles(dir: string, extensions: string[]): Promise<string[]
   const files: string[] = []
 
   async function walk(currentDir: string) {
-    let entries: Awaited<ReturnType<typeof readdir>>
+    let entries: import('node:fs').Dirent[]
     try {
       entries = await readdir(currentDir, { withFileTypes: true })
     } catch {
