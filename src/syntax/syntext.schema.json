@@ -293,6 +293,21 @@
               ]
             },
             "header": {
+              "description": "The header bar. Changes the header only: the home, sidebar and components keep the preset's look.",
+              "type": "string",
+              "enum": [
+                "command",
+                "pill",
+                "tabs",
+                "mega",
+                "simple",
+                "island",
+                "index",
+                "path"
+              ]
+            },
+            "home": {
+              "description": "The docs home layout, one per header style. Default: the preset's own home.",
               "type": "string",
               "enum": [
                 "command",
@@ -2840,6 +2855,219 @@
       "required": [
         "name"
       ],
+      "additionalProperties": false
+    },
+    "api": {
+      "description": "API reference settings (doc engine v2): request sample languages, and the overview sections a spec cannot fill.",
+      "type": "object",
+      "properties": {
+        "requestLanguages": {
+          "description": "Languages of the generated request samples on v2 endpoint pages, in tab order. Default: curl, javascript, python, go, ruby, php, java, csharp. A page's `requestLanguages` frontmatter wins.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "curl",
+              "javascript",
+              "typescript",
+              "node",
+              "python",
+              "python-httpx",
+              "go",
+              "ruby",
+              "php",
+              "java",
+              "csharp",
+              "rust",
+              "swift",
+              "kotlin",
+              "http"
+            ]
+          }
+        },
+        "rateLimits": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "description": "Paragraph under the heading.",
+              "type": "string"
+            },
+            "tiers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "description": "Plan name, the first column.",
+                    "type": "string"
+                  },
+                  "limits": {
+                    "description": "Column name to limit, e.g. { \"Requests per minute\": 60 }.",
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "limits"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "headers": {
+              "description": "Rate-limit response headers. Default: the ones the spec declares.",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "pagination": {
+          "description": "Default: the parameters of an x-speakeasy-pagination or x-fern-pagination operation.",
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "in": {
+                    "type": "string"
+                  },
+                  "default": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "example": {
+              "description": "A page of results: a string (shown as written) or JSON."
+            }
+          },
+          "additionalProperties": false
+        },
+        "sdks": {
+          "description": "SDK cards: name, install command, link.",
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "install": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "icon": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "install": {
+                        "type": "string"
+                      },
+                      "url": {
+                        "type": "string"
+                      },
+                      "icon": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "items"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
       "additionalProperties": false
     },
     "headers": {

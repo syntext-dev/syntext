@@ -34,7 +34,8 @@ function preset(label: string, font: string, mono: string, size: Size, radius: R
     radius,
     accent,
     mode,
-    layout: { shell: s, header, nav, toc, groups: 'collapsible' },
+    // The home follows the preset: its own header value (layout.home).
+    layout: { shell: s, header, home: header, nav, toc, groups: 'collapsible' },
     components: { callout, steps, code, cards, tabs, api },
   }
 }
@@ -60,6 +61,13 @@ export const V2_PRESETS: Readonly<Record<PresetName, PresetDefaults>> = {
 
 export const PRESET_NAMES = Object.keys(V2_PRESETS) as PresetName[]
 export const DEFAULT_V2_PRESET: PresetName = 'workbench'
+
+/**
+ * Ends the build log line of every build that rendered with v2
+ * ("Appearance: paper preset (doc engine v2)"). services/v2-preview reads it
+ * to tell a site already on v2 from a v1 one without reading its repository.
+ */
+export const V2_BUILD_LOG_MARKER = '(doc engine v2)'
 
 export const isPresetName = (v: string): v is PresetName => Object.prototype.hasOwnProperty.call(V2_PRESETS, v)
 
