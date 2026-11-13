@@ -2,7 +2,8 @@
  * Freshness check for the doc engine v2 syntax modules the CLI copies from
  * syntext-backend (duplication over coupling: the CLI ships as one binary).
  *
- * The copies live in src/syntax and src/appearance; each starts with a
+ * The copies live in src/syntax and src/appearance (plus migrate-syntax/home-to-mdx.ts
+ * and lib/starter-index.ts); each starts with a
  * "Copied from syntext-backend …" line. Point SYNTEXT_BACKEND_DIR at a backend
  * checkout (a `:`-separated list of roots, searched in order) and this test
  * fails when a copy has drifted:
@@ -58,6 +59,9 @@ const PAIRS: Pair[] = [
   { cli: 'appearance/contrast.ts', backend: `${M}/appearance/contrast.ts`, imports: [["'./wcag'", "'../theme/contrast'"]] },
   { cli: 'appearance/org-theme-ref.ts', backend: `${M}/appearance/org-theme-ref.ts` },
   { cli: 'appearance/wcag.ts', backend: `${M}/theme/contrast.ts` },
+  { cli: 'migrate-syntax/home-to-mdx.ts', backend: 'src/services/v2/home-to-mdx.ts' },
+  { cli: 'migrate-syntax/home-to-mdx.test.ts', backend: 'src/services/v2/home-to-mdx.test.ts' },
+  { cli: 'lib/starter-index.ts', backend: 'src/services/v2/starter-index.ts' },
 ]
 
 function normalizedCopy(pair: Pair): string {

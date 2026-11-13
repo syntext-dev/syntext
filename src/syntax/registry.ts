@@ -38,6 +38,14 @@ export type Rewrite =
   | { type: 'rename-prop'; tag: string; from: string; to: string }
   /** Needs a person: the build names the closest valid key. */
   | { type: 'manual'; hint: string }
+  /**
+   * Replace the generated docs home with the home components in the index page's body:
+   * `homeToMdx` (services/v2/home-to-mdx.ts, GET /v1/schema/deprecations.json) writes them from
+   * the page's `home` frontmatter, or from the preset's home when there is none, and drops `home`.
+   * Needs the site's data (the CLI reads it from the last build: POST /v1/projects/:id/appearance/home/convert
+   * with target "preview").
+   */
+  | { type: 'home-to-mdx'; file: 'index' }
 
 export type Deprecation = {
   code: string
@@ -57,6 +65,13 @@ export type Deprecation = {
   requiresV2?: boolean
   /** Extra context for the docs and the changelog. */
   note?: string
+  /**
+   * After its window the form is ignored with a warning, never a build failure (the generated
+   * home: a site without it still builds, it just shows its own content).
+   */
+  neverFails?: boolean
+  /** The renderer writes the build warning itself (with the fixed cut-off date); the syntax pass only records the use. */
+  reportedByRenderer?: boolean
 }
 
 const V2_NOTE = 'The appearance block applies when the site renders with doc engine v2; adding it opts the site in.'
@@ -113,6 +128,8 @@ export const DEPRECATIONS: readonly Deprecation[] = [
   config('layout-nav-collapsible', 'appearance.layout.nav: "collapsible"', 'appearance.layout.nav: "chevrons"',
     { type: 'set-value', path: 'appearance.layout.nav', from: 'collapsible', to: 'chevrons' },
     'Change appearance.layout.nav from "collapsible" to "chevrons" (folding is appearance.layout.groups in every preset).'),
+  config('layout-home', 'appearance.layout.home', 'nothing (the home blocks follow the preset)', { type: 'remove-key', path: 'appearance.layout.home' },
+    'Delete appearance.layout.home; from 27 November 2026 the home blocks follow the preset.', { requiresV2: true, neverFails: true, reportedByRenderer: true, note: 'Also read from project settings and organization themes; there too it is ignored with a warning after the cut-off, never an error.' }),
   config('features-codeLanguageTabs', 'features.codeLanguageTabs', 'nothing (use features.codeLanguageSelector)', { type: 'remove-key', path: 'features.codeLanguageTabs' },
     'Delete features.codeLanguageTabs; it never changed anything. features.codeLanguageSelector picks the control.'),
   config('features-parameterStyle', 'features.parameterStyle', 'nothing', { type: 'remove-key', path: 'features.parameterStyle' },
@@ -134,6 +151,14 @@ export const DEPRECATIONS: readonly Deprecation[] = [
   fm('noIndex', 'noIndex', 'noindex', { type: 'rename-frontmatter-key', from: 'noIndex', to: 'noindex' }, 'Rename noIndex to noindex.'),
   fm('fullWidth', 'fullWidth: true', 'layout: full-width', { type: 'frontmatter-flag-to-value', from: 'fullWidth', to: 'layout', value: 'full-width' },
     'Replace fullWidth: true with layout: full-width (delete fullWidth: false).'),
+  fm('home', 'home (index page frontmatter)', 'the home components in index.mdx (<Hero title>, <SectionCards>, <LatestUpdates>…)',
+    { type: 'home-to-mdx', file: 'index' },
+    'Convert the generated home to components: Appearance › Convert home to content, or `stx migrate`. The generated home stops on 27 November 2026.',
+    { requiresV2: true, neverFails: true, reportedByRenderer: true, note: 'home-as-content.md. `home: false` is not deprecated: it opts the index in to showing its own content.' }),
+  fm('implicit-home', 'an index page that shows the generated docs home (no home frontmatter)', 'the home components in index.mdx, or home: false',
+    { type: 'home-to-mdx', file: 'index' },
+    'Convert the generated home to components (Appearance › Convert home to content, or `stx migrate`), or add home: false to show only the page. The generated home stops on 27 November 2026.',
+    { requiresV2: true, neverFails: true, reportedByRenderer: true, note: 'Doc engine v2 index pages without `home` frontmatter that do not use the home components yet.' }),
   fm('unknown-key', 'a frontmatter key Syntext does not read', 'the closest valid key, or nothing',
     { type: 'manual', hint: 'Rename the key to the suggestion in the message, or delete it.' }, 'Rename the key to the suggested one, or delete it.'),
 

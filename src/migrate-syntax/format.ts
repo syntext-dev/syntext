@@ -26,6 +26,8 @@ export function formatSummary(r: SyntaxMigrationResult, table: { source: 'remote
   const files = r.files.length
   if (!n && !r.held.length && !r.remaining.length && !r.unsupported.length) {
     out.push(chalk.green('No deprecated syntax found.'))
+  } else if (!n && r.unsupported.length && !r.held.length && !r.remaining.length) {
+    out.push(chalk.yellow('Nothing rewritten, but the deprecation table has rules this stx cannot apply.'))
   } else if (!n) {
     out.push(chalk.bold('Nothing left to rewrite automatically.'))
   } else if (r.dryRun) {
@@ -38,6 +40,11 @@ export function formatSummary(r: SyntaxMigrationResult, table: { source: 'remote
   if (n) {
     out.push('')
     out.push(...[...r.applied].sort(byPlace).map(changeLine))
+  }
+  if (r.home) {
+    out.push('', r.home.from === 'last-build'
+      ? chalk.dim(`  ${r.home.file}: the home components follow the last build's site data. Preview it with stx dev before you commit.`)
+      : chalk.yellow(`  ${r.home.file}: the home components follow the local files (${r.home.reason}). Check the hero links and blocks with stx dev before you commit.`))
   }
   if (r.held.length) {
     out.push('', chalk.yellow(`  Not rewritten (${r.held.length})`))

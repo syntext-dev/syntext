@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 import { deprecationTable } from '../syntax/table'
-import { rewritePage } from './page-rewrite'
+import { PAGE_REWRITE_TYPES, rewritePage, unsupportedPageRules } from './page-rewrite'
 
 const items = deprecationTable().items
 const run = (source: string) => rewritePage('docs/a.mdx', source, items)
@@ -71,5 +71,19 @@ describe('rewritePage: MDX', () => {
     const twice = run(once.text)
     expect(twice.applied).toEqual([])
     expect(twice.text).toBe(once.text)
+  })
+})
+
+describe('unsupportedPageRules', () => {
+  const table = deprecationTable().items
+  const as = (type: string) => ({ ...table[0]!, code: `frontmatter.${type}`, kind: 'frontmatter' as const, rewrite: { type } as unknown as (typeof table)[number]['rewrite'] })
+
+  it('should know every page rule in the bundled table, home-to-mdx included', () => {
+    expect(unsupportedPageRules(table)).toEqual([])
+    expect(PAGE_REWRITE_TYPES.has('home-to-mdx')).toBe(true)
+  })
+
+  it('should name page rules of a type this stx does not know, and ignore config rules', () => {
+    expect(unsupportedPageRules([as('split-page'), { ...as('split-page'), kind: 'config' as const, code: 'config.x' }])).toEqual(['frontmatter.split-page'])
   })
 })

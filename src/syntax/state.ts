@@ -19,10 +19,12 @@ export function removedAtFor(noticeAt: Date | null | undefined): Date | null {
  * its replacement only exists in the v2 renderer, so failing the build would
  * force a renderer switch rather than a rename.
  */
-export function deprecationPhase(noticeAt: Date | null | undefined, now: Date, opts: { requiresV2?: boolean; siteIsV2?: boolean } = {}): DeprecationPhase {
+export function deprecationPhase(noticeAt: Date | null | undefined, now: Date, opts: { requiresV2?: boolean; siteIsV2?: boolean; neverFails?: boolean } = {}): DeprecationPhase {
   const removedAt = removedAtFor(noticeAt)
   if (!noticeAt || !removedAt) return 'warning'
   if (now.getTime() < removedAt.getTime()) return 'window'
   if (opts.requiresV2 && !opts.siteIsV2) return 'window'
+  // Ignored with a warning after its window, never an error (registry `neverFails`).
+  if (opts.neverFails) return 'window'
   return 'removed'
 }

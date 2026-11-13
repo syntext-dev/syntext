@@ -28,7 +28,7 @@ describe('scanPage', () => {
   })
 
   it('should record unknown frontmatter keys and report bad values separately', () => {
-    const r = scanPage('a.mdx', '---\ntitle: A\nsidebarTitel: B\nlayout: wide\n---\n')
+    const r = scanPage('a.mdx', '---\ntitle: A\nsidebarTitel: B\nlayout: huge\n---\n')
     expect(r.usages).toEqual([{ code: 'frontmatter.unknown-key', kind: 'frontmatter', file: 'a.mdx', line: 3, old: 'sidebarTitel', replacement: 'sidebarTitle' }])
     expect(r.issues).toEqual([expect.objectContaining({ key: 'layout', kind: 'invalid-value', line: 4 })])
   })

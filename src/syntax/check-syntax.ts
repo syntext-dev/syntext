@@ -19,6 +19,8 @@ import { lineLocator } from './locate'
 import { parseSiteConfigText, SITE_CONFIG_FILES, SiteConfigError } from './parse'
 import { scanConfigDeprecations } from './scan-config'
 import { scanPage } from './scan-page'
+import { homeDeprecationWarning } from './home-warning'
+import { findDeprecation } from './registry'
 import { formatUsage, type DeprecationUsage } from './usage'
 import { validateSiteConfig } from './validate'
 
@@ -30,7 +32,11 @@ export type SyntaxCheckInput = {
   config: LoadedConfig | null
   /** The config file exists but does not parse. */
   configError?: { fileName: string; message: string }
-  pages: ReadonlyArray<{ file: string; source: string }>
+  /**
+   * `file` names the page in messages; `docsFile` is its path from the docs
+   * folder (`index.mdx`), which decides whether it is the site's home page.
+   */
+  pages: ReadonlyArray<{ file: string; source: string; docsFile?: string }>
 }
 
 /** Paths whose problems the appearance resolver reports in its own words. */
@@ -76,6 +82,8 @@ export function checkSyntax(input: SyntaxCheckInput): { issues: SyntaxIssue[]; u
     for (const u of scanConfigDeprecations({ config, fileName, source: content })) {
       usages.push(u)
       if (u.code === 'config.unknown-key' && RESOLVER_OWNED.test(u.old)) continue
+      // appearance.layout.home: the appearance resolver words it (with its date), as in the build.
+      if (findDeprecation(u.code)?.reportedByRenderer) continue
       own.push(usageIssue(u, siteIsV2))
     }
     for (const issue of validateSiteConfig(config, { source: content })) {
@@ -91,9 +99,16 @@ export function checkSyntax(input: SyntaxCheckInput): { issues: SyntaxIssue[]; u
   }
 
   for (const page of input.pages) {
-    const r = scanPage(page.file, page.source)
-    usages.push(...r.usages)
-    const own = r.usages.map((u) => usageIssue(u, siteIsV2))
+    const r = scanPage(page.docsFile ?? page.file, page.source)
+    // The generated home only exists in doc engine v2 (registry `reportedByRenderer`): on a v1 site it is not a deprecation.
+    const found = r.usages
+      .filter((u) => siteIsV2 || !findDeprecation(u.code)?.reportedByRenderer)
+      .map((u) => ({ ...u, file: page.file }))
+    usages.push(...found)
+    const own = found.map((u) => {
+      const home = homeDeprecationWarning(u.code)
+      return home ? { file: u.file, line: u.line, type: 'warning' as const, code: u.code, message: home } : usageIssue(u, siteIsV2)
+    })
     for (const issue of r.issues) own.push({ file: page.file, line: issue.line ?? 1, type: 'warning', message: issue.message })
     issues.push(...own.sort(byLine))
   }
@@ -107,12 +122,12 @@ export async function checkProjectSyntax(rootDir: string): Promise<{ configFile:
   const rel = (abs: string) => relative(rootDir, abs)
   const loaded = await readSiteConfig(docsRoot)
   const configFile = loaded ? rel(join(docsRoot, loaded.fileName)) : null
-  const pages: Array<{ file: string; source: string }> = []
+  const pages: Array<{ file: string; source: string; docsFile: string }> = []
   const docsDir = join(docsRoot, 'docs')
   if (existsSync(docsDir)) {
     const files: string[] = []
     for await (const f of new Bun.Glob('**/*.{md,mdx}').scan({ cwd: docsDir })) if (!f.split('/').includes('node_modules')) files.push(f)
-    for (const f of files.sort()) pages.push({ file: rel(join(docsDir, f)), source: await readFile(join(docsDir, f), 'utf-8') })
+    for (const f of files.sort()) pages.push({ file: rel(join(docsDir, f)), docsFile: f, source: await readFile(join(docsDir, f), 'utf-8') })
   }
   const { issues } = checkSyntax({
     config: loaded && 'config' in loaded ? { ...loaded, fileName: configFile as string } : null,

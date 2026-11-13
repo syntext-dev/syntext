@@ -14,6 +14,20 @@ import type { TableItem } from '../syntax/table-source'
 import type { Change, Held } from './config-rewrite'
 
 type Edit = { start: number; end: number; text: string }
+
+/**
+ * The page rule types this stx knows. `home-to-mdx` is applied by
+ * home-rewrite.ts (it needs the site's data); `manual` is reported, never applied.
+ */
+export const PAGE_REWRITE_TYPES: ReadonlySet<string> = new Set(['rename-frontmatter-key', 'frontmatter-flag-to-value', 'rename-tag', 'tag-from-prop', 'rename-prop', 'home-to-mdx', 'manual'])
+
+/**
+ * Codes of page rules whose type this stx does not know. The published table
+ * can be newer than the binary; those rules are reported, never skipped silently.
+ */
+export function unsupportedPageRules(items: readonly TableItem[]): string[] {
+  return items.filter((i) => i.kind !== 'config' && !PAGE_REWRITE_TYPES.has(i.rewrite.type)).map((i) => i.code)
+}
 type Rule = { type: string } & Record<string, unknown>
 
 const show = (v: unknown) => (typeof v === 'string' ? v : JSON.stringify(v))

@@ -52,7 +52,7 @@ export function findBrokenLinks(content: string, files: string[]): string[] {
 }
 
 export const checkCommand = new Command('check')
-  .description('Validate docs and syntext.json: deprecated syntax, unknown keys (with "did you mean"), broken links and annotation drift')
+  .description('Validate docs and syntext.json: deprecated syntax (including the generated docs home on doc engine v2), unknown keys (with "did you mean"), broken links and annotation drift')
   .option('-d, --dir <dir>', 'Project folder that holds syntext.json', '.')
   .option('-s, --src <paths...>', 'Source directories to scan for @stx annotations', ['src'])
   .option('--json', 'Output result as JSON')

@@ -29,7 +29,7 @@ bun test    # run tests
 
 | Command | Description |
 |---------|-------------|
-| `stx init` | Scaffold a new docs project (`syntext.json` starts with the `$schema` line) |
+| `stx init` | Scaffold a new docs project (`syntext.json` starts with the `$schema` line); `--preset <name>` starts on doc engine v2 with a home page built from the home components |
 | `stx dev` | Watch for changes and auto-deploy previews |
 | `stx build` | Build on the Syntext backend and download the static site (for self-hosting) |
 | `stx deploy` | Push to Syntext hosting |
@@ -99,6 +99,18 @@ props, in the same words as the hosted build:
 
 Unknown keys and values are warnings, as in the build.
 
+On a doc engine v2 site, the docs root `index.mdx` is also checked for the
+generated docs home, which stops on 27 November 2026 (`frontmatter.home` for
+`home` frontmatter, `frontmatter.implicit-home` for an index with neither
+`home` nor home components). `home: false` or any home component (`<Hero
+title>`, `<SectionCards>`, `<LatestUpdates>`, …) opts the page in and silences
+it. `appearance.layout.home` is reported once, in the appearance resolver's
+words. v1 sites get none of these.
+
+```
+⚠ docs/index.mdx:1: This index page shows the generated docs home, which stops on 27 November 2026: …
+```
+
 ### `stx check --explain appearance`
 
 Prints every resolved appearance value and where it came from (`preset`,
@@ -127,10 +139,29 @@ copy bundled with stx. Moves into `appearance` switch a v1 site to doc engine
 v2, so they wait for `--v2`; the summary lists them, and anything that needs a
 person (unknown keys, a prop set under both names).
 
+**The generated docs home** (`home-to-mdx`, doc engine v2 only): the docs root
+`index.mdx` gets the home components the preset's home drew, in the layout's
+order, with authored `home` items as children; `home` is dropped, `layout:
+wide` replaces any `layout`, and the old body stays below. The conversion
+needs the site's data (home layout, changelog, API and CLI sections). Logged
+in with a `projectId` in `syntext.json`, stx asks the last build for it
+(`POST /v1/projects/:id/appearance/home/convert`, `{ "target": "preview" }`,
+which writes nothing). Otherwise (not logged in, no project, no build yet,
+the API unreachable, or `--offline`) it works it out from `syntext.json` and
+the page paths, and the summary says so and why; the Plain preset's hero
+quickstart link is the one thing it cannot know. `--json` reports it as
+`home: { file, from: "last-build" | "local", reason? }`.
+
+A rule in the published table of a type this stx does not know is listed as
+`unsupported` ("This stx cannot apply …. Update stx and run it again."), never
+skipped silently.
+
 ### Keeping the copies in step
 
 `src/syntax` and `src/appearance` copy the backend's deprecation table,
-schema, validators and appearance resolver (each file starts with a
+schema, validators and appearance resolver; `src/migrate-syntax/home-to-mdx.ts`
+(with its test) and `src/lib/starter-index.ts` copy the home conversion and the
+v2 starter index page (each file starts with a
 "Copied from syntext-backend" line). With a backend checkout, check them:
 
 ```bash

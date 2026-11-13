@@ -30,6 +30,7 @@ function harness(remote: 'ok' | 'down' = 'ok') {
       print: (s: string) => lines.push(plain(s)),
       fetchImpl: async () => (remote === 'ok' ? new Response(JSON.stringify(deprecationTable())) : new Response('no', { status: 503 })),
       spinner: false,
+      loadCredentials: async () => null,
     },
   }
 }
@@ -81,6 +82,35 @@ describe('runSyntaxMigrate', () => {
     await runSyntaxMigrate({ dir: root, offline: true, json: true }, { ...h.deps, fetchImpl: async () => { called = true; return new Response('{}') } })
     expect(called).toBe(false)
     expect(JSON.parse(h.lines[0]).table.source).toBe('bundled')
+  })
+
+  it('should convert the generated home with the last build\'s data when logged in', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'stx-msyn-'))
+    await mkdir(join(dir, 'docs'), { recursive: true })
+    await writeFile(join(dir, 'syntext.json'), '{ "name": "Acme", "theme": "paper", "projectId": "p1" }\n')
+    await writeFile(join(dir, 'docs/index.mdx'), '---\ntitle: Welcome\n---\n')
+    const seen: string[] = []
+    const h = harness()
+    const fetchImpl = async (url: string) => {
+      seen.push(url)
+      if (url.endsWith('/home/convert')) return new Response(JSON.stringify({ data: { mode: 'preview', mdx: '<Hero title="Acme" />\n', warnings: [] } }))
+      return new Response(JSON.stringify(deprecationTable()))
+    }
+    const code = await runSyntaxMigrate({ dir }, { ...h.deps, fetchImpl, loadCredentials: async () => ({ token: 'tok', apiUrl: 'https://api.test' }) })
+    expect(code).toBe(0)
+    expect(seen).toContain('https://api.test/v1/projects/p1/appearance/home/convert')
+    expect(await readFile(join(dir, 'docs/index.mdx'), 'utf-8')).toBe('---\ntitle: Welcome\nlayout: wide\n---\n\n<Hero title="Acme" />\n')
+    expect(h.lines.join('\n')).toContain("docs/index.mdx: the home components follow the last build's site data")
+  })
+
+  it('should convert from the local files with --offline and say so', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'stx-msyn-'))
+    await mkdir(join(dir, 'docs'), { recursive: true })
+    await writeFile(join(dir, 'syntext.json'), '{ "name": "Acme", "theme": "paper", "projectId": "p1" }\n')
+    await writeFile(join(dir, 'docs/index.mdx'), '---\ntitle: Welcome\n---\n')
+    const h = harness()
+    await runSyntaxMigrate({ dir, offline: true, json: true }, { ...h.deps, loadCredentials: async () => ({ token: 'tok' }) })
+    expect(JSON.parse(h.lines[0]).home).toEqual({ file: 'docs/index.mdx', from: 'local', reason: '--offline' })
   })
 
   it('should fail with a clear message on a broken config', async () => {

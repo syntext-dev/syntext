@@ -70,10 +70,44 @@ function scanTags(file: string, source: string, out: DeprecationUsage[]): void {
   }
 }
 
+/** The docs root's index page (the site home); not a section's `guides/index.mdx`. */
+export const isRootIndexFile = (file: string) => /^(?:\.\/)?index\.mdx?$/i.test(file)
+
+const HOME_TAGS = /<(?:SectionCards|QuickStart|ApiGroups|SdkList|CommandList|PopularPages|LatestUpdates|SupportCard)[\s>/]|<Hero\s[^>]*\btitle\s*=|<SearchBar\s[^>]*\bsize\s*=\s*["']?(?:lg|large)\b/
+
+/**
+ * The generated docs home (home-as-content.md): an index page with `home`
+ * frontmatter, or with none and no home components (the implicit home).
+ * `home: false` and a body with home components have opted in.
+ */
+function scanHome(file: string, source: string, out: DeprecationUsage[]): void {
+  if (!isRootIndexFile(file)) return
+  const block = frontmatterBlock(source)
+  let data: Record<string, unknown> = {}
+  if (block) {
+    try {
+      const fm = parseYaml(block.text)
+      if (fm && typeof fm === 'object' && !Array.isArray(fm)) data = fm as Record<string, unknown>
+    } catch {
+      return
+    }
+  }
+  if (data.home === false || HOME_TAGS.test(source)) return
+  if (data.home !== undefined && data.home !== null) {
+    const d = findDeprecation('frontmatter.home')
+    const at = block ? lineLocator(block.text, block.firstLine - 1, block.firstLine)(['home']) : 1
+    if (d) out.push(use(d, file, at, 'home', d.replacement))
+  } else {
+    const d = findDeprecation('frontmatter.implicit-home')
+    if (d) out.push(use(d, file, 1, d.old, d.replacement))
+  }
+}
+
 export function scanPage(file: string, source: string): { usages: DeprecationUsage[]; issues: FrontmatterIssue[] } {
   const usages: DeprecationUsage[] = []
   const issues: FrontmatterIssue[] = []
   scanFrontmatter(file, source, usages, issues)
+  scanHome(file, source, usages)
   scanTags(file, source, usages)
   return { usages, issues }
 }

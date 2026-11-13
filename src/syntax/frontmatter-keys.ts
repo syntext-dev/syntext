@@ -53,9 +53,9 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKeySpec[] = [
   {
     key: 'layout',
     type: 'enum',
-    values: ['default', 'centered', 'full-width', 'landing'],
-    description: 'Page structure: default three columns, centered single column, full-width, or landing (sidebar kept, wider centred column).',
-    note: 'Guide pages only; API pages ignore it.',
+    values: ['default', 'centered', 'full-width', 'landing', 'wide'],
+    description: 'Page structure: default three columns, centered single column, full-width, landing (sidebar kept, wider centred column), or wide (doc engine v2: the header, the body across the page, the footer; no sidebar, TOC or page foot, for a home built from the home components).',
+    note: 'Guide pages only; API pages ignore it. wide is doc engine v2 only; v1 treats it as default.',
   },
   { key: 'fullWidth', type: 'boolean', description: 'Let the content span the full width.', note: 'Guide pages only. Same as layout: full-width.', deprecated: 'layout: full-width' },
   {
@@ -88,7 +88,8 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKeySpec[] = [
   {
     key: 'home',
     type: 'object',
-    description: 'The docs home, built from blocks: { hero: { title, description, actions, install }, blocks: [{ type: quickstart | cards | api | sdks | changelog | popular | commands | ask | support, ... }] }. Blocks not given are filled from the site.',
+    description: 'Deprecated (generated home stops on 27 November 2026): the docs home built from blocks: { hero: { title, description, actions, install }, blocks: [{ type: quickstart | cards | api | sdks | changelog | popular | commands | ask | support, ... }] }. false opts the index in to rendering its own content. Write the home with the home components instead (<Hero title>, <SectionCards>, <LatestUpdates>…).',
+    deprecated: 'the home components in the index page body (Appearance › Convert home to content)',
     note: 'Index page of doc engine v2 sites only; v1 sites ignore it. Validated by services/v2/home-frontmatter.ts: unknown block types and fields are dropped with a "did you mean" build warning.',
   },
 

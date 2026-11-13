@@ -6,46 +6,44 @@ import ora from 'ora'
 import { generateCITemplate, generateDockerfile } from '../lib/ci-templates'
 import { loadCredentials } from '../lib/credentials'
 import { apiFetch, isSessionRevokedError } from '../lib/api'
+import { starterIndexMdx } from '../lib/starter-index'
+import { PRESET_NAMES, type PresetName } from '../appearance/presets'
 
 export const initCommand = new Command('init')
   .description('Initialize a new Syntext documentation project')
   .argument('[directory]', 'Target directory', '.')
   .option('--name <name>', 'Project name')
   .option('--template <template>', 'Starter template', 'default')
+  .option('--preset <preset>', `Start on doc engine v2 with a layout preset (${PRESET_NAMES.join(', ')}); the home page is written with the home components`)
   .option('--create', 'Also create the project on Syntext (requires login)')
   .option('--ci <provider>', 'Generate CI config (github, gitlab, bitbucket)')
   .option('--docker', 'Generate Dockerfile for self-hosted deployment')
   .addHelpText('after', `
 The new syntext.json starts with "$schema": "https://syntext.dev/schema/syntext.json",
-so VS Code and JetBrains autocomplete every key and flag typos as you type.`)
+so VS Code and JetBrains autocomplete every key and flag typos as you type.
+
+With --preset, the site starts on doc engine v2 and docs/index.mdx is a page built
+from the home components (<Hero>, <SectionCards>, <LatestUpdates>) with layout: wide.
+Without it, the site starts on the default theme and index.mdx is plain Markdown.
+
+Examples:
+  $ stx init my-docs                     Default theme, Markdown home page
+  $ stx init my-docs --preset paper      Doc engine v2, Paper preset, home components`)
   .action(async (directory, options) => {
     const spinner = ora('Creating Syntext project...').start()
     const targetDir = join(process.cwd(), directory)
 
     try {
-      // Create directory structure
-      await mkdir(join(targetDir, 'docs'), { recursive: true })
-      await mkdir(join(targetDir, 'docs/guides'), { recursive: true })
-      await mkdir(join(targetDir, 'docs/api'), { recursive: true })
-      await mkdir(join(targetDir, 'public'), { recursive: true })
-
-      // Create syntext.json
+      const preset = parsePreset(options.preset)
       const projectName = options.name ?? directory === '.' ? 'my-docs' : directory
-      await writeFile(
-        join(targetDir, 'syntext.json'),
-        generateConfig(projectName)
-      )
 
-      // Create starter docs
-      await writeFile(
-        join(targetDir, 'docs/index.mdx'),
-        generateIndexPage(projectName)
-      )
-
-      await writeFile(
-        join(targetDir, 'docs/guides/getting-started.mdx'),
-        generateGettingStarted(projectName)
-      )
+      // syntext.json, the starter pages, and the folders they need
+      await mkdir(join(targetDir, 'public'), { recursive: true })
+      if (!preset) await mkdir(join(targetDir, 'docs/api'), { recursive: true })
+      for (const [path, content] of Object.entries(starterFiles(projectName, { preset }))) {
+        await mkdir(join(targetDir, path, '..'), { recursive: true })
+        await writeFile(join(targetDir, path), content)
+      }
 
       // Create docs.json (navigation config)
       await writeFile(
@@ -147,18 +145,66 @@ export const SYNTEXT_SCHEMA_URL = 'https://syntext.dev/schema/syntext.json'
  * The starter syntext.json: the `$schema` line first, so editors autocomplete
  * every key, and no deprecated keys, so `stx check` on a new project is clean.
  */
-export function generateConfig(name: string): string {
+export function generateConfig(name: string, opts: { preset?: PresetName } = {}): string {
   return JSON.stringify({
     $schema: SYNTEXT_SCHEMA_URL,
     name,
-    theme: 'default',
-    navigation: [
-      {
-        group: 'Getting Started',
-        pages: ['index', 'guides/getting-started'],
-      },
-    ],
+    // A preset name as the theme switches the site to doc engine v2.
+    theme: opts.preset ?? 'default',
+    navigation: opts.preset
+      ? [
+          { group: 'Getting Started', pages: ['index', 'quickstart'] },
+          { group: 'API reference', pages: ['api-reference/index'] },
+        ]
+      : [
+          {
+            group: 'Getting Started',
+            pages: ['index', 'guides/getting-started'],
+          },
+        ],
   }, null, 2) + '\n'
+}
+
+/** The `--preset` value, checked against the v2 presets (undefined without it). */
+export function parsePreset(value: unknown): PresetName | undefined {
+  if (value === undefined) return undefined
+  const name = String(value).trim().toLowerCase()
+  if ((PRESET_NAMES as readonly string[]).includes(name)) return name as PresetName
+  throw new Error(`"${String(value)}" is not a doc engine v2 preset. Use one of: ${PRESET_NAMES.join(', ')}.`)
+}
+
+/**
+ * Every file `stx init` writes besides CI and Docker files, by path. A v2 site
+ * (`preset`) gets the backend's starter index.mdx (lib/starter-index.ts: home
+ * components, `layout: wide`) and the two pages its hero links to; a v1 site
+ * keeps the plain Markdown home.
+ */
+export function starterFiles(name: string, opts: { preset?: PresetName } = {}): Record<string, string> {
+  if (opts.preset) {
+    return {
+      'syntext.json': generateConfig(name, opts),
+      'docs/index.mdx': starterIndexMdx({ title: name }),
+      'docs/quickstart.mdx': generateGettingStarted(name).replace('title: Getting Started', 'title: Quickstart').replace('# Getting Started', '# Quickstart').replaceAll('](/api)', '](/api-reference)'),
+      'docs/api-reference/index.mdx': generateApiReference(name),
+    }
+  }
+  return {
+    'syntext.json': generateConfig(name),
+    'docs/index.mdx': generateIndexPage(name),
+    'docs/guides/getting-started.mdx': generateGettingStarted(name),
+  }
+}
+
+function generateApiReference(name: string): string {
+  return `---
+title: API reference
+description: The ${name} API
+---
+
+# API reference
+
+Run \`stx generate --src .\` to write reference pages from the \`@stx\` annotations in your source code, or add an OpenAPI file under \`openapi\` in syntext.json.
+`
 }
 
 function generateIndexPage(name: string): string {
