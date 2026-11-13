@@ -16,7 +16,7 @@ describe('validateFrontmatter', () => {
   it('should name the allowed values for a bad enum value', () => {
     const [issue] = validateFrontmatter({ layout: 'centred' })
     expect(issue).toMatchObject({ key: 'layout', kind: 'invalid-value', suggestion: 'centered' })
-    expect(issue.message).toContain('Use one of: default, centered, full-width, landing.')
+    expect(issue.message).toContain('Use one of: default, centered, full-width, landing, wide.')
   })
 
   it('should leave case-insensitive enum values alone', () => {

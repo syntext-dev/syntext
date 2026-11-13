@@ -46,6 +46,7 @@ export function describeRewrite(r: Rewrite): string {
     case 'tag-from-prop': return `\`<${r.tag} ${r.prop}="x">\` → named tag (${Object.entries(r.map).map(([a, b]) => `${a}→${b}`).join(', ')}), drop \`${r.prop}\`, rename the closing tag; unknown values stay`
     case 'rename-prop': return `rename \`${r.from}\` to \`${r.to}\` on \`<${r.tag}>\` unless \`${r.to}\` is set`
     case 'manual': return `manual: ${r.hint}`
+    case 'home-to-mdx': return 'write the generated home of the index page as home components (`homeToMdx`), drop `home`'
   }
 }
 

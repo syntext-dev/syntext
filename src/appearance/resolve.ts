@@ -191,6 +191,9 @@ function withoutSetFields(flags: Record<string, unknown>, appearance: unknown): 
   return out
 }
 
+/** The warning for `appearance.layout.home` (services/v2/home-deprecation.ts holds the same date). */
+export const LAYOUT_HOME_DEPRECATED = 'appearance.layout.home is deprecated and stops working on 27 November 2026: the home blocks will then follow the preset. Remove it.'
+
 export function resolveAppearance(config: unknown, opts: { orgTheme?: OrgThemeInput } = {}): AppearanceResult {
   const cfg = isObject(config) ? config : {}
   const issues: AppearanceIssue[] = []
@@ -220,6 +223,11 @@ export function resolveAppearance(config: unknown, opts: { orgTheme?: OrgThemeIn
   apply(out, withoutSetFields(featureFlags(cfg.features), cfg.appearance), 'feature-flag', sources, [], 'features')
   if (opts.orgTheme?.appearance !== undefined) apply(out, opts.orgTheme.appearance, 'org-theme', sources, issues, `theme ${rawTheme}`)
   apply(out, cfg.appearance, 'appearance', sources, issues)
+  // Deprecated with the generated home (home-as-content.md): still applied until the cut-off, then
+  // ignored with this warning. Wherever it is stored (syntext.json, settings, an org theme), never an error.
+  if (sources['layout.home'] === 'appearance' || sources['layout.home'] === 'org-theme') {
+    issues.push({ path: 'appearance.layout.home', severity: 'warning', message: LAYOUT_HOME_DEPRECATED })
+  }
 
   const v2 = Boolean(orgTheme) || (rawTheme !== '' && isPresetName(rawTheme)) || cfg.appearance !== undefined
   return { v2, appearance: out, sources, issues, ...(orgTheme ? { orgTheme } : {}) }
