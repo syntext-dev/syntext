@@ -95,7 +95,7 @@ describe('checkSyntax', () => {
   it('should report appearance problems in the resolver wording, once', () => {
     const r = checkSyntax({ config: config('{\n  "appearance": {\n    "layout": { "nav": "tre" }\n  }\n}'), pages: [] })
     expect(r.issues).toHaveLength(1)
-    expect(r.issues[0]).toMatchObject({ line: 3, code: 'appearance', message: '"tre" is not a layout.nav value. Use one of: tree, pills, mono, chevrons, plain, dock, chapters, overlay. Did you mean "tree"?' })
+    expect(r.issues[0]).toMatchObject({ line: 3, code: 'appearance', message: '"tre" is not a layout.nav value. Use one of: tree, pills, mono, chevrons, plain, dock, chapters, overlay, sections. Did you mean "tree"?' })
   })
 
   it('should report an unknown theme with did you mean', () => {

@@ -16,7 +16,7 @@ export const LAYOUT_SWITCHES = {
    * changing `header` changes the header bar only (switch-isolation.ts).
    */
   home: ['command', 'pill', 'tabs', 'mega', 'simple', 'island', 'index', 'path'],
-  nav: ['tree', 'pills', 'mono', 'chevrons', 'plain', 'dock', 'chapters', 'overlay'],
+  nav: ['tree', 'pills', 'mono', 'chevrons', 'plain', 'dock', 'chapters', 'overlay', 'sections'],
   toc: ['progress', 'pills', 'dots', 'rule', 'plain', 'float', 'ruler', 'ticks'],
   groups: ['collapsible', 'open'],
 } as const
