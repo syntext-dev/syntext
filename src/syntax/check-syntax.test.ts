@@ -27,7 +27,7 @@ describe('checkSyntax', () => {
     it('should warn about home frontmatter on a v2 index page, in the build\'s words and with the date', () => {
       const r = checkSyntax({ config: v2, pages: [{ file: 'docs/index.mdx', docsFile: 'index.mdx', source: home }] })
       expect(r.issues).toEqual([expect.objectContaining({ file: 'docs/index.mdx', line: 3, type: 'warning', code: 'frontmatter.home' })])
-      expect(r.issues[0]?.message).toContain('stops on 27 November 2026')
+      expect(r.issues[0]?.message).toContain('stops on 1 December 2026')
       expect(r.usages[0]).toMatchObject({ file: 'docs/index.mdx', code: 'frontmatter.home' })
     })
 
@@ -56,7 +56,7 @@ describe('checkSyntax', () => {
 
     it('should report appearance.layout.home once, in the resolver\'s words', () => {
       const r = checkSyntax({ config: config('{\n  "theme": "paper",\n  "appearance": { "layout": { "home": "pill" } }\n}'), pages: [] })
-      expect(r.issues.map((i) => i.message)).toEqual([expect.stringContaining('appearance.layout.home is deprecated and stops working on 27 November 2026')])
+      expect(r.issues.map((i) => i.message)).toEqual([expect.stringContaining('appearance.layout.home is deprecated and stops working on 1 December 2026')])
       expect(r.usages.map((u) => u.code)).toEqual(['config.layout-home'])
     })
   })

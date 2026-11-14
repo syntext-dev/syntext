@@ -7,6 +7,7 @@
  * and `services/icon-chrome.ts`. Keys that frontmatter.mdx documents but nothing
  * reads (`type`, `date`, `backgroundSize`, `backgroundPosition`) are left out.
  */
+import { homeCutoffLabel } from './home-cutoff'
 
 export type FrontmatterKeySpec = {
   key: string
@@ -88,7 +89,7 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKeySpec[] = [
   {
     key: 'home',
     type: 'object',
-    description: 'Deprecated (generated home stops on 27 November 2026): the docs home built from blocks: { hero: { title, description, actions, install }, blocks: [{ type: quickstart | cards | api | sdks | changelog | popular | commands | ask | support, ... }] }. false opts the index in to rendering its own content. Write the home with the home components instead (<Hero title>, <SectionCards>, <LatestUpdates>…).',
+    description: `Deprecated (generated home stops on ${homeCutoffLabel()}): the docs home built from blocks: { hero: { title, description, actions, install }, blocks: [{ type: quickstart | cards | api | sdks | changelog | popular | commands | ask | support, ... }] }. false opts the index in to rendering its own content. Write the home with the home components instead (<Hero title>, <SectionCards>, <LatestUpdates>…).`,
     deprecated: 'the home components in the index page body (Appearance › Convert home to content)',
     note: 'Index page of doc engine v2 sites only; v1 sites ignore it. Validated by services/v2/home-frontmatter.ts: unknown block types and fields are dropped with a "did you mean" build warning.',
   },

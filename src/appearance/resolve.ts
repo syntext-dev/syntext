@@ -14,6 +14,7 @@
  */
 import { DEFAULT_V2_PRESET, isPresetName, LEGACY_THEMES, PRESET_NAMES, V2_PRESETS, type PresetName } from './presets'
 import { didYouMean } from '../syntax/suggest'
+import { homeCutoffLabel } from '../syntax/home-cutoff'
 import {
   COMPONENT_SWITCHES, DENSITIES, HEX, LAYOUT_SWITCHES, MODES, RADII, SIZES, VALUE_ALIASES, WIDTHS,
   type ComponentValues, type Density, type LayoutValues, type Mode, type Radius, type Size, type Width,
@@ -191,8 +192,8 @@ function withoutSetFields(flags: Record<string, unknown>, appearance: unknown): 
   return out
 }
 
-/** The warning for `appearance.layout.home` (services/v2/home-deprecation.ts holds the same date). */
-export const LAYOUT_HOME_DEPRECATED = 'appearance.layout.home is deprecated and stops working on 27 November 2026: the home blocks will then follow the preset. Remove it.'
+/** The warning for `appearance.layout.home` (the date is modules/deprecations/home-cutoff.ts). */
+export const LAYOUT_HOME_DEPRECATED = `appearance.layout.home is deprecated and stops working on ${homeCutoffLabel()}: the home blocks will then follow the preset. Remove it.`
 
 export function resolveAppearance(config: unknown, opts: { orgTheme?: OrgThemeInput } = {}): AppearanceResult {
   const cfg = isObject(config) ? config : {}
