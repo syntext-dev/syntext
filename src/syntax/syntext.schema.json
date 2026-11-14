@@ -2885,6 +2885,10 @@
             ]
           }
         },
+        "generateAlongsideAuthored": {
+          "description": "On v2 endpoint pages with an authored request example, add a generated tab for every `requestLanguages` language the example leaves out, sending the same request (read from its cURL). Authored tabs stay first, as written. Default: true. A page's `generateAlongsideAuthored` frontmatter wins.",
+          "type": "boolean"
+        },
         "rateLimits": {
           "type": "object",
           "properties": {
