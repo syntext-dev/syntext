@@ -2833,29 +2833,111 @@
       }
     },
     "auth": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "label": {
-          "type": "string"
-        },
-        "in": {
+      "anyOf": [
+        {
+          "description": "No credential, even if syntext.json declares one (frontmatter only makes sense here).",
           "type": "string",
-          "enum": [
-            "header",
-            "query"
-          ]
+          "const": "none"
         },
-        "prefix": {
-          "type": "string"
+        {
+          "type": "boolean",
+          "const": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "description": "bearer (Authorization: Bearer), basic, apiKey (needs name), or oauth2 / openIdConnect (sent as a Bearer token). Without type: the v1 { name, prefix } form.",
+              "type": "string",
+              "enum": [
+                "bearer",
+                "basic",
+                "apiKey",
+                "oauth2",
+                "openIdConnect"
+              ]
+            },
+            "name": {
+              "description": "Header, query parameter or cookie that carries the credential. Required for apiKey and the v1 form; bearer defaults to Authorization.",
+              "type": "string"
+            },
+            "label": {
+              "description": "What Try it asks for, e.g. \"Session token\" or \"API key\".",
+              "type": "string"
+            },
+            "description": {
+              "description": "One sentence under the credential field: where to get it.",
+              "type": "string"
+            },
+            "in": {
+              "type": "string",
+              "enum": [
+                "header",
+                "query",
+                "cookie"
+              ]
+            },
+            "prefix": {
+              "description": "Written before the value. Default: \"Bearer \" for bearer, \"Basic \" for basic, none for a key.",
+              "type": "string"
+            },
+            "bearerFormat": {
+              "description": "e.g. JWT: the samples then write <jwt> instead of <token>.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Alternatives the API accepts: Try it shows a chooser; samples use the first.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "description": "bearer (Authorization: Bearer), basic, apiKey (needs name), or oauth2 / openIdConnect (sent as a Bearer token). Without type: the v1 { name, prefix } form.",
+                "type": "string",
+                "enum": [
+                  "bearer",
+                  "basic",
+                  "apiKey",
+                  "oauth2",
+                  "openIdConnect"
+                ]
+              },
+              "name": {
+                "description": "Header, query parameter or cookie that carries the credential. Required for apiKey and the v1 form; bearer defaults to Authorization.",
+                "type": "string"
+              },
+              "label": {
+                "description": "What Try it asks for, e.g. \"Session token\" or \"API key\".",
+                "type": "string"
+              },
+              "description": {
+                "description": "One sentence under the credential field: where to get it.",
+                "type": "string"
+              },
+              "in": {
+                "type": "string",
+                "enum": [
+                  "header",
+                  "query",
+                  "cookie"
+                ]
+              },
+              "prefix": {
+                "description": "Written before the value. Default: \"Bearer \" for bearer, \"Basic \" for basic, none for a key.",
+                "type": "string"
+              },
+              "bearerFormat": {
+                "description": "e.g. JWT: the samples then write <jwt> instead of <token>.",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
         }
-      },
-      "required": [
-        "name"
-      ],
-      "additionalProperties": false
+      ]
     },
     "api": {
       "description": "API reference settings (doc engine v2): request sample languages, and the overview sections a spec cannot fill.",

@@ -172,7 +172,7 @@
         ],
         "kind": "invalid-value",
         "severity": "warning",
-        "message": "\"body\" is not a valid auth.in value. Use one of: header, query."
+        "message": "\"body\" is not a valid auth.in value. Use one of: header, query, cookie."
       }
     ]
   },
