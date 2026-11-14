@@ -110,6 +110,7 @@ describe('resolveAppearance', () => {
     const a = resolveAppearance({ appearance: { layout: { nav: 'dock' } } })
     const b = resolveAppearance({})
     expect(a.appearance.layout.nav).toBe('dock')
+    expect(resolveAppearance({ appearance: { layout: { nav: 'sections' } } }).appearance.layout.nav).toBe('sections')
     expect(b.appearance.layout.nav).toBe(V2_PRESETS.workbench.layout.nav)
   })
 })

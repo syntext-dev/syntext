@@ -51,8 +51,9 @@ export const V2_PRESETS: Readonly<Record<PresetName, PresetDefaults>> = {
     ['enterprise', 'mega', 'chevrons', 'rule'], ['box', 'procedure', 'navy', 'accent', 'boxed', 'boxed']),
   plain: preset('Plain', 'Hanken Grotesk', 'Fira Code', 16, 'small', '#6D28D9', 'light',
     ['minimal', 'simple', 'plain', 'plain'], ['soft', 'list', 'plain', 'plain', 'text', 'plain']),
+  // Orbit's nav is `sections` (backend modules/appearance/presets.ts); `dock` stays a value.
   orbit: preset('Orbit', 'Manrope', 'DM Mono', 16, 'large', '#4F46E5', 'light',
-    ['floating', 'island', 'dock', 'float'], ['float', 'stack', 'float', 'bento', 'segment', 'split']),
+    ['floating', 'island', 'sections', 'float'], ['float', 'stack', 'float', 'bento', 'segment', 'split']),
   grid: preset('Grid', 'Inter Tight', 'IBM Plex Mono', 16, 'none', '#E11D48', 'light',
     ['grid', 'index', 'chapters', 'ruler'], ['cell', 'cells', 'cell', 'cell', 'cells', 'grid']),
   margin: preset('Margin', 'Instrument Sans', 'Red Hat Mono', 17, 'medium', '#0E7490', 'light',
