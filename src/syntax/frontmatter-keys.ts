@@ -114,8 +114,7 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKeySpec[] = [
     key: 'auth',
     type: 'object',
     protocol: 'rest',
-    description: 'Credential scheme for the "Try it" console: { name, label, in: header | query, prefix }. Overrides syntext.json auth.',
-    note: 'Read but not documented in frontmatter.mdx.',
+    description: 'How this endpoint authenticates, for Try it and the request samples: { type: bearer | basic | apiKey | oauth2 | openIdConnect, name, in: header | query | cookie, label, description, bearerFormat }, a list of alternatives, or none for a public endpoint. Overrides syntext.json auth. Nothing declared anywhere: no credential is shown.',
   },
   {
     key: 'requestLanguages',
