@@ -6,14 +6,10 @@
  * writes them here. Keep the date and wording in step with that file.
  */
 
-/** The last day the generated home renders without opting in. */
-export const HOME_CUTOFF = '2026-11-27'
-
-/** "27 November 2026". */
-export function homeCutoffLabel(iso = HOME_CUTOFF): string {
-  const d = new Date(`${iso}T00:00:00Z`)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
-}
+// The cut-off date lives in home-cutoff.ts (a copy of the backend's
+// modules/deprecations/home-cutoff.ts); re-exported here for existing callers.
+import { homeCutoffLabel } from './home-cutoff'
+export { HOME_CUTOFF, homeCutoffLabel } from './home-cutoff'
 
 const HOW = 'Convert it to components with Appearance › Convert home to content in the dashboard (or `stx migrate`)'
 

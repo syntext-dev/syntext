@@ -102,7 +102,7 @@ props, in the same words as the hosted build:
 Unknown keys and values are warnings, as in the build.
 
 On a doc engine v2 site, the docs root `index.mdx` is also checked for the
-generated docs home, which stops on 27 November 2026 (`frontmatter.home` for
+generated docs home, which stops on 1 December 2026 (`frontmatter.home` for
 `home` frontmatter, `frontmatter.implicit-home` for an index with neither
 `home` nor home components). `home: false` or any home component (`<Hero
 title>`, `<SectionCards>`, `<LatestUpdates>`, …) opts the page in and silences
@@ -110,7 +110,7 @@ it. `appearance.layout.home` is reported once, in the appearance resolver's
 words. v1 sites get none of these.
 
 ```
-⚠ docs/index.mdx:1: This index page shows the generated docs home, which stops on 27 November 2026: …
+⚠ docs/index.mdx:1: This index page shows the generated docs home, which stops on 1 December 2026: …
 ```
 
 ### `stx check --explain appearance`

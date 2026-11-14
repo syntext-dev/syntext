@@ -31,7 +31,7 @@ Examples:
   $ stx migrate --v2               Also move colors, fonts and style flags into appearance
   $ stx migrate --from mintlify    Import a Mintlify site
 
-The generated docs home (doc engine v2) stops on 27 November 2026. stx migrate writes it
+The generated docs home (doc engine v2) stops on 1 December 2026. stx migrate writes it
 into docs/index.mdx as home components (<Hero title>, <SectionCards>, <LatestUpdates>, …)
 with layout: wide, so the page looks the same. It uses the last build's site data
 (logged in, with a projectId in syntext.json), otherwise the local files, and says which.

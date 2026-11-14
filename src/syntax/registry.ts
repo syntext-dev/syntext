@@ -74,6 +74,10 @@ export type Deprecation = {
   reportedByRenderer?: boolean
 }
 
+import { homeCutoffLabel } from './home-cutoff'
+
+const CUTOFF = homeCutoffLabel()
+
 const V2_NOTE = 'The appearance block applies when the site renders with doc engine v2; adding it opts the site in.'
 
 const config = (code: string, old: string, replacement: string, rewrite: Rewrite, fix: string, extra: Partial<Deprecation> = {}): Deprecation =>
@@ -129,7 +133,7 @@ export const DEPRECATIONS: readonly Deprecation[] = [
     { type: 'set-value', path: 'appearance.layout.nav', from: 'collapsible', to: 'chevrons' },
     'Change appearance.layout.nav from "collapsible" to "chevrons" (folding is appearance.layout.groups in every preset).'),
   config('layout-home', 'appearance.layout.home', 'nothing (the home blocks follow the preset)', { type: 'remove-key', path: 'appearance.layout.home' },
-    'Delete appearance.layout.home; from 27 November 2026 the home blocks follow the preset.', { requiresV2: true, neverFails: true, reportedByRenderer: true, note: 'Also read from project settings and organization themes; there too it is ignored with a warning after the cut-off, never an error.' }),
+    `Delete appearance.layout.home; from ${CUTOFF} the home blocks follow the preset.`, { requiresV2: true, neverFails: true, reportedByRenderer: true, note: 'Also read from project settings and organization themes; there too it is ignored with a warning after the cut-off, never an error.' }),
   config('features-codeLanguageTabs', 'features.codeLanguageTabs', 'nothing (use features.codeLanguageSelector)', { type: 'remove-key', path: 'features.codeLanguageTabs' },
     'Delete features.codeLanguageTabs; it never changed anything. features.codeLanguageSelector picks the control.'),
   config('features-parameterStyle', 'features.parameterStyle', 'nothing', { type: 'remove-key', path: 'features.parameterStyle' },
@@ -153,11 +157,11 @@ export const DEPRECATIONS: readonly Deprecation[] = [
     'Replace fullWidth: true with layout: full-width (delete fullWidth: false).'),
   fm('home', 'home (index page frontmatter)', 'the home components in index.mdx (<Hero title>, <SectionCards>, <LatestUpdates>…)',
     { type: 'home-to-mdx', file: 'index' },
-    'Convert the generated home to components: Appearance › Convert home to content, or `stx migrate`. The generated home stops on 27 November 2026.',
+    `Convert the generated home to components: Appearance › Convert home to content, or \`stx migrate\`. The generated home stops on ${CUTOFF}.`,
     { requiresV2: true, neverFails: true, reportedByRenderer: true, note: 'home-as-content.md. `home: false` is not deprecated: it opts the index in to showing its own content.' }),
   fm('implicit-home', 'an index page that shows the generated docs home (no home frontmatter)', 'the home components in index.mdx, or home: false',
     { type: 'home-to-mdx', file: 'index' },
-    'Convert the generated home to components (Appearance › Convert home to content, or `stx migrate`), or add home: false to show only the page. The generated home stops on 27 November 2026.',
+    `Convert the generated home to components (Appearance › Convert home to content, or \`stx migrate\`), or add home: false to show only the page. The generated home stops on ${CUTOFF}.`,
     { requiresV2: true, neverFails: true, reportedByRenderer: true, note: 'Doc engine v2 index pages without `home` frontmatter that do not use the home components yet.' }),
   fm('unknown-key', 'a frontmatter key Syntext does not read', 'the closest valid key, or nothing',
     { type: 'manual', hint: 'Rename the key to the suggestion in the message, or delete it.' }, 'Rename the key to the suggested one, or delete it.'),
