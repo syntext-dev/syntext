@@ -12,6 +12,11 @@ describe('FRONTMATTER_KEYS', () => {
     expect(findFrontmatterKey('home')?.type).toBe('object')
   })
 
+  it('should know the per-page css key as a string', () => {
+    expect(findFrontmatterKey('css')?.type).toBe('string')
+    expect(findFrontmatterKey('css')?.note).toContain('_syntext/')
+  })
+
   it('should list each key once', () => {
     const keys = FRONTMATTER_KEYS.map((k) => k.key)
     expect(new Set(keys).size).toBe(keys.length)

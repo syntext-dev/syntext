@@ -7,9 +7,10 @@ import { loadConfig, configFileExists } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
 import { apiFetch, isSessionRevokedError } from '../lib/api'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
+import { collectRootCustomCodeFiles, CUSTOM_CODE_DIR, hasRepoScripts } from '../lib/repo-custom-code'
 
 export const devCommand = new Command('dev')
-  .description('Watch for changes and auto-deploy previews')
+  .description('Watch for changes and auto-deploy previews (docs/, public/, _syntext/ and the config). Repo CSS applies in previews; repo scripts never run there')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
   .option('--branch <branch>', 'Branch name for preview', 'dev')
   .option('--token <token>', 'Login token or project API key (overrides stx login)')
@@ -46,6 +47,8 @@ export const devCommand = new Command('dev')
     const displayDir = nested ? rootDir.replace(process.cwd() + '/', '') : '.'
     console.log(chalk.dim(`Watching ${displayDir} for changes...`))
     console.log(chalk.dim(`Branch: ${branch}\n`))
+    const scriptsNote = previewScriptsNote(rootDir)
+    if (scriptsNote) console.log(chalk.dim(scriptsNote + '\n'))
 
     let previewUrl = await deployPreview(rootDir, apiUrl, token, projectId, branch).catch(exitIfSessionRevoked)
     if (previewUrl) {
@@ -54,7 +57,8 @@ export const devCommand = new Command('dev')
 
     // Watch for changes
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
-    const dirsToWatch = ['docs', 'public'].map((d) => join(rootDir, d))
+    // docs/ covers docs/_syntext/; the root _syntext/ is watched on its own.
+    const dirsToWatch = devWatchDirs(rootDir)
     const configFiles = [
       'syntext.json', 'syntext.yaml', 'syntext.yml',
       'stx.json', 'stx.yaml', 'stx.yml',
@@ -72,7 +76,7 @@ export const devCommand = new Command('dev')
       }, 800)
     }
 
-    // Watch docs/ and public/ recursively
+    // Watch docs/, public/ and _syntext/ recursively
     for (const dir of dirsToWatch) {
       try {
         watch(dir, { recursive: true }, () => triggerDeploy())
@@ -95,6 +99,17 @@ export const devCommand = new Command('dev')
     // Keep process alive
     await new Promise(() => {})
   })
+
+/** Folders `stx dev` watches for changes: docs/ (with docs/_syntext/), public/ and the root _syntext/. */
+export function devWatchDirs(rootDir: string): string[] {
+  return ['docs', 'public', CUSTOM_CODE_DIR].map((d) => join(rootDir, d))
+}
+
+/** The note `stx dev` prints when the project ships repo scripts, which previews never run. Null without scripts. */
+export function previewScriptsNote(rootDir: string): string | null {
+  if (!hasRepoScripts(rootDir)) return null
+  return `Note: ${CUSTOM_CODE_DIR}/*.js and head.html do not run in previews (CSS does). On the live site they run only when an admin allows scripts from the repository.`
+}
 
 /** A revoked session cannot recover while watching: say so and stop. Other errors propagate. */
 export function exitIfSessionRevoked(err: unknown): never {
@@ -164,6 +179,9 @@ export async function deployPreview(
     } catch {
       // no public dir
     }
+
+    // Root _syntext/ (repo custom code). docs/_syntext/ ships with docs/ above.
+    sourceFiles.push(...await collectRootCustomCodeFiles(rootDir))
 
     // openapi spec
     for (const specName of ['openapi.json', 'openapi.yaml', 'openapi.yml']) {

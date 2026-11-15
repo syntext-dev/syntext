@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import * as credentials from '../lib/credentials'
-import { devCommand, deployPreview, exitIfSessionRevoked } from './dev'
+import { devCommand, deployPreview, devWatchDirs, exitIfSessionRevoked, previewScriptsNote } from './dev'
 import { SessionRevokedError, userAgent } from '../lib/api'
 
 const strip = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, '')
@@ -67,6 +67,23 @@ describe('dev', () => {
       for (const r of requests) expect(new Headers(r.init?.headers).get('User-Agent')).toBe(userAgent())
     })
 
+    it('should upload the root _syntext/ files alongside docs/_syntext/', async () => {
+      await mkdir(join(dir, '_syntext'))
+      await writeFile(join(dir, '_syntext', 'theme.css'), 'a{}')
+      await writeFile(join(dir, '_syntext', 'notes.txt'), 'skip')
+      await mkdir(join(dir, 'docs', '_syntext'))
+      await writeFile(join(dir, 'docs', '_syntext', 'app.js'), 'x()')
+      respond(
+        json(202, { data: { buildId: 'b1', status: 'queued', branch: 'dev', isPreview: true, fileCount: 3 } }),
+        json(200, { data: { status: 'deployed', deployUrl: 'https://preview.test', pageCount: 1, durationMs: 5, error: null } }),
+      )
+      await deployPreview(dir, 'https://api.test', 'tok', 'p1', 'dev')
+      const paths = (requests[0].init?.body as FormData).getAll('paths')
+      expect(paths).toContain('_syntext/theme.css')
+      expect(paths).toContain('docs/_syntext/app.js')
+      expect(paths).not.toContain('_syntext/notes.txt')
+    })
+
     it('should return null on an ordinary deploy error', async () => {
       respond(json(500, { error: { code: 'internal_error', message: 'boom' } }))
       expect(await deployPreview(dir, 'https://api.test', 'tok', 'p1', 'dev')).toBeNull()
@@ -76,6 +93,26 @@ describe('dev', () => {
       respond(json(401, { error: { code: 'session_revoked', message: 'signed out' } }))
       await expect(deployPreview(dir, 'https://api.test', 'tok', 'p1', 'dev')).rejects.toBeInstanceOf(SessionRevokedError)
       expect(credentials.clearCredentials).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('devWatchDirs', () => {
+    it('should watch docs/, public/ and the root _syntext/', () => {
+      expect(devWatchDirs('/p')).toEqual(['/p/docs', '/p/public', '/p/_syntext'])
+    })
+  })
+
+  describe('previewScriptsNote', () => {
+    it('should be null with no scripts', async () => {
+      await mkdir(join(dir, 'docs', '_syntext'))
+      await writeFile(join(dir, 'docs', '_syntext', 'theme.css'), 'a{}')
+      expect(previewScriptsNote(dir)).toBeNull()
+    })
+
+    it('should say scripts do not run in previews when _syntext has a script or head.html', async () => {
+      await mkdir(join(dir, '_syntext'))
+      await writeFile(join(dir, '_syntext', 'head.html'), '<meta>')
+      expect(previewScriptsNote(dir)).toContain('do not run in previews (CSS does)')
     })
   })
 

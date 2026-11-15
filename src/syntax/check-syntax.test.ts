@@ -185,6 +185,15 @@ describe('checkProjectSyntax', () => {
     expect(r.issues.map((i) => `${i.file}:${i.line} ${i.code}`)).toEqual(['syntext.json:2 config.language', 'docs/guides/a.mdx:4 mdx.caution'])
   })
 
+  it('should skip _syntext/, which is never a page', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'stx-proj-'))
+    await mkdir(join(dir, 'docs/_syntext'), { recursive: true })
+    await writeFile(join(dir, 'syntext.json'), '{ "name": "A" }\n')
+    await writeFile(join(dir, 'docs/_syntext/notes.mdx'), '---\ntitle: N\n---\n<Caution>x</Caution>\n')
+    const r = await checkProjectSyntax(dir)
+    expect(r.issues).toEqual([])
+  })
+
   it('should use the nested .syntext folder like stx build does', async () => {
     dir = await mkdtemp(join(tmpdir(), 'stx-proj-'))
     await mkdir(join(dir, '.syntext/docs'), { recursive: true })

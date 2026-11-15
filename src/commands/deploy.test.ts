@@ -211,6 +211,15 @@ describe('deploy session handling', () => {
     expect(new Headers(seen?.headers).get('User-Agent')).toBe(userAgent())
   })
 
+  it('should upload the root _syntext/ files', async () => {
+    await mkdir(join(dir, 'docs'))
+    await writeFile(join(dir, 'docs', 'index.mdx'), '# Hi')
+    await mkdir(join(dir, '_syntext'))
+    await writeFile(join(dir, '_syntext', 'theme.css'), 'a{}')
+    await deployCommand.parseAsync(['--dir', dir, '--json'], { from: 'user' }).catch(() => undefined)
+    expect((seen?.body as FormData).getAll('paths')).toEqual(expect.arrayContaining(['docs/index.mdx', '_syntext/theme.css']))
+  })
+
   it('should describe --token as a login token or project API key', () => {
     expect(deployCommand.helpInformation()).toContain('project API key')
   })
