@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import * as credentials from '../lib/credentials'
-import { devCommand, deployPreview, devWatchDirs, exitIfSessionRevoked, previewScriptsNote } from './dev'
+import { devCommand, deployPreview, devWatchDirs, exitIfSessionRevoked, isWatchedChange, previewScriptsNote } from './dev'
 import { SessionRevokedError, userAgent } from '../lib/api'
 
 const strip = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, '')
@@ -84,6 +84,18 @@ describe('dev', () => {
       expect(paths).not.toContain('_syntext/notes.txt')
     })
 
+    it('should upload pages that sit next to syntext.json', async () => {
+      await rm(join(dir, 'docs'), { recursive: true })
+      await writeFile(join(dir, 'index.mdx'), '# Home')
+      await writeFile(join(dir, 'package.json'), '{}')
+      respond(
+        json(202, { data: { buildId: 'b1', status: 'queued', branch: 'dev', isPreview: true, fileCount: 2 } }),
+        json(200, { data: { status: 'deployed', deployUrl: 'https://preview.test', pageCount: 1, durationMs: 5, error: null } }),
+      )
+      await deployPreview(dir, 'https://api.test', 'tok', 'p1', 'dev')
+      expect([...(requests[0].init?.body as FormData).getAll('paths')].sort()).toEqual(['index.mdx', 'syntext.json'])
+    })
+
     it('should return null on an ordinary deploy error', async () => {
       respond(json(500, { error: { code: 'internal_error', message: 'boom' } }))
       expect(await deployPreview(dir, 'https://api.test', 'tok', 'p1', 'dev')).toBeNull()
@@ -99,6 +111,26 @@ describe('dev', () => {
   describe('devWatchDirs', () => {
     it('should watch docs/, public/ and the root _syntext/', () => {
       expect(devWatchDirs('/p')).toEqual(['/p/docs', '/p/public', '/p/_syntext'])
+    })
+
+    it('should watch the project folder when pages sit next to syntext.json', () => {
+      expect(devWatchDirs('/p', 'root')).toEqual(['/p'])
+    })
+  })
+
+  describe('isWatchedChange', () => {
+    it('should accept every change with the docs/ layout', () => {
+      expect(isWatchedChange('node_modules/x.md', 'docs')).toBe(true)
+    })
+
+    it('should ignore changes the root upload never includes', () => {
+      for (const f of ['node_modules/a/b.js', 'node_modules', '.git/index', 'dist/a.md', '.env', 'k/server.pem']) {
+        expect(isWatchedChange(f, 'root')).toBe(false)
+      }
+    })
+
+    it('should react to pages, assets and unknown file names', () => {
+      for (const f of ['index.mdx', 'guides/a.md', 'img/a.png', null]) expect(isWatchedChange(f, 'root')).toBe(true)
     })
   })
 

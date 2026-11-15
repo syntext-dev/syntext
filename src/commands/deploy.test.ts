@@ -4,154 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as credentials from '../lib/credentials'
 import { userAgent } from '../lib/api'
-import { collectSpecPaths, collectSchemaPaths, collectSpecs, deployCommand } from './deploy'
-import type { SyntextConfig } from '../lib/config'
-
-const ROOT = '/tmp/project'
-
-describe('collectSpecPaths', () => {
-  it('should fall back to the conventional root filenames when nothing is declared', () => {
-    // Projects that predate the `openapi` config relied on these being found.
-    expect(collectSpecPaths({} as SyntextConfig, ROOT)).toEqual([
-      'openapi.json',
-      'openapi.yaml',
-      'openapi.yml',
-    ])
-  })
-
-  it('should accept a single path', () => {
-    expect(collectSpecPaths({ openapi: './openapi.json' }, ROOT)).toEqual(['openapi.json'])
-  })
-
-  it('should accept a list of paths', () => {
-    expect(collectSpecPaths({ openapi: ['./a.yaml', 'b.yaml'] }, ROOT)).toEqual(['a.yaml', 'b.yaml'])
-  })
-
-  // The form that caused the incident: 14 specs in a subdirectory, none uploaded.
-  it('should accept path/prefix entries pointing into a subdirectory', () => {
-    const config: SyntextConfig = {
-      openapi: [
-        { path: './openapi/customers.yaml', prefix: '/api-reference/customers' },
-        { path: './openapi/kyc.yaml', prefix: '/api-reference/kyc' },
-      ],
-    }
-    expect(collectSpecPaths(config, ROOT)).toEqual([
-      'openapi/customers.yaml',
-      'openapi/kyc.yaml',
-    ])
-  })
-
-  it('should strip a leading ./ so paths match the upload bundle', () => {
-    expect(collectSpecPaths({ openapi: './openapi/a.yaml' }, ROOT)).toEqual(['openapi/a.yaml'])
-  })
-
-  it('should de-duplicate a spec shared by two prefixes', () => {
-    const config: SyntextConfig = {
-      openapi: [
-        { path: './openapi/shared.yaml', prefix: '/a' },
-        { path: './openapi/shared.yaml', prefix: '/b' },
-      ],
-    }
-    expect(collectSpecPaths(config, ROOT)).toEqual(['openapi/shared.yaml'])
-  })
-
-  it('should tolerate a mixed list of strings and entries', () => {
-    const config = { openapi: ['./a.yaml', { path: './b.yaml', prefix: '/b' }] } as SyntextConfig
-    expect(collectSpecPaths(config, ROOT)).toEqual(['a.yaml', 'b.yaml'])
-  })
-
-  it('should ignore malformed entries rather than throwing', () => {
-    const config = {
-      openapi: [{ prefix: '/no-path' }, null, 42, './ok.yaml'],
-    } as unknown as SyntextConfig
-    expect(collectSpecPaths(config, ROOT)).toEqual(['ok.yaml'])
-  })
-
-  it('should fall back when the declared list is empty', () => {
-    expect(collectSpecPaths({ openapi: [] }, ROOT)).toHaveLength(3)
-  })
-
-  it('should reproduce the Gravv config that lost 86 pages', () => {
-    // syntext.json declares 14 specs; the old code checked three root filenames
-    // and uploaded none, so every generated endpoint page 404'd.
-    const config: SyntextConfig = {
-      openapi: [
-        'customers', 'kyc', 'risk', 'features', 'accounts', 'external-accounts',
-        'transfer', 'cards', 'collections', 'payment-links', 'wallets', 'fx',
-        'transactions', 'webhooks',
-      ].map((n) => ({ path: `./openapi/${n}.yaml`, prefix: `/api-reference/${n}` })),
-    }
-    const paths = collectSpecPaths(config, ROOT)
-    expect(paths).toHaveLength(14)
-    expect(paths).toContain('openapi/customers.yaml')
-    expect(paths.every((p) => p.startsWith('openapi/'))).toBe(true)
-  })
-})
-
-describe('collectSchemaPaths', () => {
-  // Fake readdir so the test does not depend on a real tree.
-  const fakeTree = (tree: Record<string, string[]>) => async (dir: string) => {
-    // join('/p', 'proto/') keeps the trailing slash, so normalise before matching.
-    const norm = dir.replace(/\/+$/, '')
-    if (!(norm in tree)) throw new Error('ENOENT')
-    return tree[norm]
-  }
-
-  it('should find a .proto in proto/', async () => {
-    const paths = await collectSchemaPaths('/p', fakeTree({ '/p/proto': ['service.proto'] }))
-    expect(paths).toContain('proto/service.proto')
-  })
-
-  it('should find a GraphQL schema in schema/', async () => {
-    const paths = await collectSchemaPaths('/p', fakeTree({ '/p/schema': ['api.graphql'] }))
-    expect(paths).toContain('schema/api.graphql')
-  })
-
-  it('should find asyncapi files by filename', async () => {
-    const paths = await collectSchemaPaths('/p', fakeTree({ '/p/api': ['asyncapi.yaml'] }))
-    expect(paths).toContain('api/asyncapi.yaml')
-  })
-
-  it('should skip docs/, which is uploaded wholesale already', async () => {
-    const paths = await collectSchemaPaths('/p', fakeTree({ '/p/docs': ['api.graphql'] }))
-    expect(paths).toEqual([])
-  })
-
-  it('should ignore unrelated files', async () => {
-    const paths = await collectSchemaPaths('/p', fakeTree({ '/p/api': ['README.md', 'notes.txt'] }))
-    expect(paths).toEqual([])
-  })
-
-  it('should tolerate missing directories', async () => {
-    const paths = await collectSchemaPaths('/p', async () => { throw new Error('ENOENT') })
-    expect(paths).toEqual([])
-  })
-})
-
-describe('collectSpecs — declared vs conventional', () => {
-  it('should not treat the fallback filenames as declared', () => {
-    // Regression shipped in v0.6.3: a missing spec was made fatal, but the
-    // conventional fallback candidates counted as declared — so any project
-    // WITHOUT an OpenAPI spec could no longer deploy at all.
-    const { paths, declared } = collectSpecs({} as SyntextConfig)
-    expect(declared).toBe(false)
-    expect(paths).toEqual(['openapi.json', 'openapi.yaml', 'openapi.yml'])
-  })
-
-  it('should mark config-declared specs as declared', () => {
-    const { paths, declared } = collectSpecs({ openapi: './openapi/a.yaml' })
-    expect(declared).toBe(true)
-    expect(paths).toEqual(['openapi/a.yaml'])
-  })
-
-  it('should mark the array form as declared', () => {
-    expect(collectSpecs({ openapi: [{ path: './a.yaml', prefix: '/a' }] }).declared).toBe(true)
-  })
-
-  it('should treat an empty list as undeclared', () => {
-    expect(collectSpecs({ openapi: [] }).declared).toBe(false)
-  })
-})
+import { deployCommand } from './deploy'
 
 describe('deploy session handling', () => {
   const realFetch = globalThis.fetch
@@ -218,6 +71,26 @@ describe('deploy session handling', () => {
     await writeFile(join(dir, '_syntext', 'theme.css'), 'a{}')
     await deployCommand.parseAsync(['--dir', dir, '--json'], { from: 'user' }).catch(() => undefined)
     expect((seen?.body as FormData).getAll('paths')).toEqual(expect.arrayContaining(['docs/index.mdx', '_syntext/theme.css']))
+  })
+
+  it('should upload pages that sit next to syntext.json, without dependencies or secrets', async () => {
+    await writeFile(join(dir, 'index.mdx'), '# Home')
+    await mkdir(join(dir, 'guides'))
+    await writeFile(join(dir, 'guides', 'start.md'), '# Start')
+    await mkdir(join(dir, 'node_modules', 'pkg'), { recursive: true })
+    await writeFile(join(dir, 'node_modules', 'pkg', 'README.md'), '# dep')
+    await writeFile(join(dir, '.env'), 'SECRET=1')
+    await deployCommand.parseAsync(['--dir', dir, '--json'], { from: 'user' }).catch(() => undefined)
+    expect([...(seen?.body as FormData).getAll('paths')].sort()).toEqual(['guides/start.md', 'index.mdx', 'syntext.json'])
+  })
+
+  it('should fail with --json before uploading when a declared spec is missing', async () => {
+    await writeFile(join(dir, 'syntext.json'), JSON.stringify({ name: 'x', projectId: 'p1', openapi: 'specs/api.yaml' }))
+    await writeFile(join(dir, 'index.mdx'), '# Home')
+    await deployCommand.parseAsync(['--dir', dir, '--json'], { from: 'user' }).catch(() => undefined)
+    expect(seen).toBeUndefined()
+    expect(JSON.parse(output.join(''))).toMatchObject({ success: false })
+    expect(output.join('')).toContain('specs/api.yaml')
   })
 
   it('should describe --token as a login token or project API key', () => {

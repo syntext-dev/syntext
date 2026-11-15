@@ -7,10 +7,14 @@ import { loadConfig, configFileExists } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
 import { apiFetch, isSessionRevokedError } from '../lib/api'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
-import { collectRootCustomCodeFiles, CUSTOM_CODE_DIR, hasRepoScripts } from '../lib/repo-custom-code'
+import { CUSTOM_CODE_DIR, hasRepoScripts } from '../lib/repo-custom-code'
+import { appendSourceFiles, collectSourceBundle, type SourceLayout } from '../lib/source-bundle'
+import { findPagesDir } from '../lib/pages-dir'
+import { collectSpecs } from '../lib/source-specs'
+import { EXCLUDED_DIRS, isInExcludedDir, isSecretPath } from '../lib/upload-filter'
 
 export const devCommand = new Command('dev')
-  .description('Watch for changes and auto-deploy previews (docs/, public/, _syntext/ and the config). CSS from _syntext/ applies in previews; head.html and scripts never run there')
+  .description('Watch for changes and auto-deploy previews (your pages in docs/ or next to syntext.json, public/, _syntext/ and the config). CSS from _syntext/ applies in previews; head.html and scripts never run there')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
   .option('--branch <branch>', 'Branch name for preview', 'dev')
   .option('--token <token>', 'Login token or project API key (overrides stx login)')
@@ -58,11 +62,13 @@ export const devCommand = new Command('dev')
     // Watch for changes
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
     // docs/ covers docs/_syntext/; the root _syntext/ is watched on its own.
-    const dirsToWatch = devWatchDirs(rootDir)
+    // Pages at the project root: the whole folder, minus what is never uploaded.
+    const layout: SourceLayout = (await findPagesDir(rootDir)).prefix === 'docs' ? 'docs' : 'root'
+    const dirsToWatch = devWatchDirs(rootDir, layout)
     const configFiles = [
       'syntext.json', 'syntext.yaml', 'syntext.yml',
       'stx.json', 'stx.yaml', 'stx.yml',
-      'openapi.json', 'openapi.yaml', 'openapi.yml',
+      ...collectSpecs(config).paths,
     ].map((f) => join(rootDir, f))
 
     const triggerDeploy = () => {
@@ -76,10 +82,12 @@ export const devCommand = new Command('dev')
       }, 800)
     }
 
-    // Watch docs/, public/ and _syntext/ recursively
+    // Watch docs/, public/ and _syntext/ (or the project folder) recursively
     for (const dir of dirsToWatch) {
       try {
-        watch(dir, { recursive: true }, () => triggerDeploy())
+        watch(dir, { recursive: true }, (_event, file) => {
+          if (isWatchedChange(file, layout)) triggerDeploy()
+        })
       } catch {
         // directory doesn't exist — skip
       }
@@ -100,9 +108,21 @@ export const devCommand = new Command('dev')
     await new Promise(() => {})
   })
 
-/** Folders `stx dev` watches for changes: docs/ (with docs/_syntext/), public/ and the root _syntext/. */
-export function devWatchDirs(rootDir: string): string[] {
+/**
+ * Folders `stx dev` watches for changes: docs/ (with docs/_syntext/), public/
+ * and the root _syntext/; with pages at the project root, the project folder.
+ */
+export function devWatchDirs(rootDir: string, layout: SourceLayout = 'docs'): string[] {
+  if (layout === 'root') return [rootDir]
   return ['docs', 'public', CUSTOM_CODE_DIR].map((d) => join(rootDir, d))
+}
+
+/** False for a change the upload never includes (dependencies, git, build output, dot files, secrets) when watching the project folder. */
+export function isWatchedChange(file: string | null, layout: SourceLayout): boolean {
+  if (layout === 'docs' || !file) return true
+  const rel = file.replace(/\\/g, '/')
+  const name = rel.slice(rel.lastIndexOf('/') + 1)
+  return !isInExcludedDir(rel) && !EXCLUDED_DIRS.has(rel.split('/')[0]) && !name.startsWith('.') && !isSecretPath(rel)
 }
 
 /** The note `stx dev` prints when the project has head.html or scripts, which previews never run. Null without them. */
@@ -134,63 +154,8 @@ export async function deployPreview(
   const spinner = ora('Deploying preview...').start()
 
   try {
-    const sourceFiles: Array<{ path: string; content: Buffer }> = []
-
-    // Config file (first match wins)
-    const configNames = ['syntext.json', 'syntext.yaml', 'syntext.yml', 'stx.json', 'stx.yaml', 'stx.yml']
-    for (const name of configNames) {
-      const configPath = join(rootDir, name)
-      const configFile = Bun.file(configPath)
-      if (await configFile.exists()) {
-        sourceFiles.push({ path: name, content: Buffer.from(await configFile.arrayBuffer()) })
-        break
-      }
-    }
-
-    // docs.json
-    const docsJsonPath = join(rootDir, 'docs.json')
-    const docsJsonFile = Bun.file(docsJsonPath)
-    if (await docsJsonFile.exists()) {
-      sourceFiles.push({ path: 'docs.json', content: Buffer.from(await docsJsonFile.arrayBuffer()) })
-    }
-
-    // docs/
-    const docsDir = join(rootDir, 'docs')
-    const docsGlob = new Bun.Glob('**/*')
-    try {
-      for await (const file of docsGlob.scan({ cwd: docsDir })) {
-        const filePath = join(docsDir, file)
-        const content = await Bun.file(filePath).arrayBuffer()
-        sourceFiles.push({ path: `docs/${file}`, content: Buffer.from(content) })
-      }
-    } catch {
-      // no docs dir
-    }
-
-    // public/
-    const publicDir = join(rootDir, 'public')
-    const publicGlob = new Bun.Glob('**/*')
-    try {
-      for await (const file of publicGlob.scan({ cwd: publicDir })) {
-        const filePath = join(publicDir, file)
-        const content = await Bun.file(filePath).arrayBuffer()
-        sourceFiles.push({ path: `public/${file}`, content: Buffer.from(content) })
-      }
-    } catch {
-      // no public dir
-    }
-
-    // Root _syntext/ (repo custom code). docs/_syntext/ ships with docs/ above.
-    sourceFiles.push(...await collectRootCustomCodeFiles(rootDir))
-
-    // openapi spec
-    for (const specName of ['openapi.json', 'openapi.yaml', 'openapi.yml']) {
-      const specPath = join(rootDir, specName)
-      const specFile = Bun.file(specPath)
-      if (await specFile.exists()) {
-        sourceFiles.push({ path: specName, content: Buffer.from(await specFile.arrayBuffer()) })
-      }
-    }
+    // Same upload as stx deploy: pages from docs/ or the project root (lib/source-bundle.ts).
+    const { files: sourceFiles } = await collectSourceBundle(rootDir, await loadConfig(rootDir))
 
     if (sourceFiles.length === 0) {
       spinner.fail(chalk.red('No source files found'))
@@ -203,10 +168,7 @@ export async function deployPreview(
     formData.append('preview', 'true')
     formData.append('branch', branch)
 
-    for (const file of sourceFiles) {
-      formData.append('files', new Blob([file.content]), file.path)
-      formData.append('paths', file.path)
-    }
+    appendSourceFiles(formData, sourceFiles)
 
     const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}/deploy`, {
       method: 'POST',
