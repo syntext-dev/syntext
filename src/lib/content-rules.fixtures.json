@@ -1,0 +1,298 @@
+{
+  "_comment": "Shared by syntext-backend (src/services/docs-code) and syntext-cli (src/lib): the custom code rules must give these exact answers in both. Change both copies together.",
+  "head": [
+    {
+      "name": "review: abrupt comment hides an img",
+      "input": "<!--><img src=x onerror=alert(1)>-->",
+      "errors": [
+        "head.html must not contain malformed comments or CDATA",
+        "<img> is not allowed (head.html may contain only <meta>, <link>, <script>, <noscript> and <style>)",
+        "head.html may contain only elements (text outside them would start the page body)"
+      ]
+    },
+    {
+      "name": "review: meta with slash separator",
+      "input": "<meta/http-equiv=\"refresh\" content=\"0;url=https://evil.example\">",
+      "errors": [
+        "<meta http-equiv=\"refresh\"> is not allowed"
+      ]
+    },
+    {
+      "name": "review: entity-encoded http-equiv",
+      "input": "<meta http-equiv=\"&#114;efresh\" content=\"0;url=https://evil.example\">",
+      "errors": [
+        "<meta http-equiv=\"refresh\"> is not allowed"
+      ]
+    },
+    {
+      "name": "review: script with slash separator",
+      "input": "<script/src=\"http://evil.example/x.js\"></script>",
+      "errors": [
+        "<script src> may load only https:// URLs (found \"http://evil.example/x.js\")"
+      ]
+    },
+    {
+      "name": "review: link onload",
+      "input": "<link rel=stylesheet href=\"https://a.example/x.css\" onload=\"alert(1)\">",
+      "errors": [
+        "<link> must not have event handlers (found onload)"
+      ]
+    },
+    {
+      "name": "review: base inside noscript",
+      "input": "<noscript><base href=\"https://evil.example/\"></noscript>",
+      "errors": [
+        "<base> is not allowed (head.html may contain only <meta>, <link>, <script>, <noscript> and <style>)"
+      ]
+    },
+    {
+      "name": "review: style tag inside a script string",
+      "input": "<script>var s=\"<style>\"</script><base href=https://evil.example/>",
+      "errors": [
+        "<base> is not allowed (head.html may contain only <meta>, <link>, <script>, <noscript> and <style>)"
+      ]
+    },
+    {
+      "name": "nested comment",
+      "input": "<!-- a <!-- b --><meta name=\"x\" content=\"y\">",
+      "errors": [
+        "head.html must not contain malformed comments or CDATA"
+      ]
+    },
+    {
+      "name": "CDATA",
+      "input": "<![CDATA[<img src=x onerror=1>]]>",
+      "errors": [
+        "head.html must not contain malformed comments or CDATA",
+        "head.html may contain only elements (text outside them would start the page body)"
+      ]
+    },
+    {
+      "name": "unknown attribute",
+      "input": "<meta name=\"a\" content=\"b\" foo=\"1\">",
+      "errors": [
+        "<meta> must not have the foo attribute"
+      ]
+    },
+    {
+      "name": "http-equiv allowlist",
+      "input": "<meta http-equiv=\"set-cookie\" content=\"a=b\">",
+      "errors": [
+        "<meta http-equiv=\"set-cookie\"> is not allowed"
+      ]
+    },
+    {
+      "name": "text outside elements",
+      "input": "hello<meta name=\"a\" content=\"b\">",
+      "errors": [
+        "head.html may contain only elements (text outside them would start the page body)"
+      ]
+    },
+    {
+      "name": "title and base",
+      "input": "<title>x</title><base href=\"/\">",
+      "errors": [
+        "<title> is not allowed (head.html may contain only <meta>, <link>, <script>, <noscript> and <style>)",
+        "<base> is not allowed (head.html may contain only <meta>, <link>, <script>, <noscript> and <style>)"
+      ]
+    },
+    {
+      "name": "body breakout",
+      "input": "<meta name=\"a\" content=\"b\"></head><body>",
+      "errors": [
+        "head.html must not contain </head>, <body> or <html>"
+      ]
+    },
+    {
+      "name": "style body is CSS",
+      "input": "<style>a{background:url(http://x/a.png)}</style>",
+      "errors": [
+        "CSS may load only https:// URLs (found \"http://x/a.png\")"
+      ]
+    },
+    {
+      "name": "script body breakout",
+      "input": "<script>var a=\"</head>\"</script>",
+      "errors": [
+        "JavaScript must not contain </head> or </body>"
+      ]
+    },
+    {
+      "name": "protocol-relative script",
+      "input": "<script src=\"//cdn.example/x.js\"></script>",
+      "errors": [
+        "<script src> may load only https:// URLs (found \"//cdn.example/x.js\")"
+      ]
+    },
+    {
+      "name": "script swallowing its own end tag",
+      "input": "<script>var a = \"<!--<script>\"</script><base href=\"/\">",
+      "errors": [
+        "head.html must not contain malformed comments or CDATA",
+        "JavaScript must not contain </script>"
+      ]
+    },
+    {
+      "name": "valid head",
+      "input": "<meta charset=\"utf-8\">\n<meta name=\"description\" content=\"Docs &amp; more\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<script async src=\"https://plausible.io/js/script.js\" data-domain=\"docs.acme.dev\"></script>\n<script>window.dataLayer = window.dataLayer || []</script>\n<noscript><link rel=\"stylesheet\" href=\"/no-js.css\"></noscript>\n<style>:root{--stx-color-accent:#f60}</style>\n<!-- analytics -->",
+      "errors": []
+    }
+  ],
+  "css": [
+    {
+      "name": "review: escaped http scheme",
+      "input": "a{background:url(\"h\\74tp://evil.example/x.png\")}",
+      "errors": [
+        "CSS may load only https:// URLs (found \"http://evil.example/x.png\")"
+      ]
+    },
+    {
+      "name": "review: image-set string",
+      "input": "a{background:image-set(\"http://evil.example/x.png\" 1x)}",
+      "errors": [
+        "CSS may load only https:// URLs (found \"http://evil.example/x.png\")"
+      ]
+    },
+    {
+      "name": "review: @import url with spaces",
+      "input": "@import url( \"http://evil.example/x.css\" );",
+      "errors": [
+        "CSS may load only https:// URLs (found \"http://evil.example/x.css\")"
+      ]
+    },
+    {
+      "name": "review: @import string after a tab",
+      "input": "@import\t\"http://evil.example/x.css\";",
+      "errors": [
+        "CSS may load only https:// URLs (found \"http://evil.example/x.css\")"
+      ]
+    },
+    {
+      "name": "review: src() function",
+      "input": "@font-face{font-family:x;src:src(\"http://evil.example/f\")}",
+      "errors": [
+        "CSS may load only https:// URLs (found \"http://evil.example/f\")"
+      ]
+    },
+    {
+      "name": "review: escaped javascript url",
+      "input": "a{background:url(\"\\6a avascript:alert(1)\")}",
+      "errors": [
+        "CSS must not contain javascript: or vbscript: URLs",
+        "CSS may load only https:// URLs (found \"javascript:alert(1)\")"
+      ]
+    },
+    {
+      "name": "review: escaped expression",
+      "input": "a{width:ex\\pression(alert(1))}",
+      "errors": [
+        "CSS must not use expression()"
+      ]
+    },
+    {
+      "name": "comment splits a scheme name",
+      "input": "a{b:java/**/script:x}",
+      "errors": [
+        "CSS must not contain javascript: or vbscript: URLs"
+      ]
+    },
+    {
+      "name": "-webkit-image-set",
+      "input": "a{background:-webkit-image-set(url(https://a/x.png) 1x, \"http://b/y.png\" 2x)}",
+      "errors": [
+        "CSS may load only https:// URLs (found \"http://b/y.png\")"
+      ]
+    },
+    {
+      "name": "style breakout",
+      "input": "a{}</style><script>alert(1)</script>",
+      "errors": [
+        "CSS must not contain </style>"
+      ]
+    },
+    {
+      "name": "valid css",
+      "input": ":root{--stx-color-accent:#f60} @import url(https://fonts.googleapis.com/css2?family=Inter); .hero{background:image-set(\"/a.png\" 1x, \"https://cdn/a@2x.png\" 2x)} .x::before{content:\"\\201C\"}",
+      "errors": []
+    }
+  ],
+  "js": [
+    {
+      "name": "script breakout",
+      "input": "a(\"</script><img src=x>\")",
+      "errors": [
+        "JavaScript must not contain </script>"
+      ]
+    },
+    {
+      "name": "comment-like text is fine (escaped when injected)",
+      "input": "x=\"<!--<script>\"",
+      "errors": []
+    }
+  ],
+  "serialize": [
+    {
+      "name": "valid head, scripts off",
+      "input": "<meta charset=\"utf-8\">\n<meta name=\"description\" content=\"Docs &amp; more\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<script async src=\"https://plausible.io/js/script.js\" data-domain=\"docs.acme.dev\"></script>\n<script>window.dataLayer = window.dataLayer || []</script>\n<noscript><link rel=\"stylesheet\" href=\"/no-js.css\"></noscript>\n<style>:root{--stx-color-accent:#f60}</style>\n<!-- analytics -->",
+      "scripts": false,
+      "output": {
+        "html": "<meta charset=\"utf-8\">\n<meta name=\"description\" content=\"Docs &amp; more\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<noscript><link rel=\"stylesheet\" href=\"/no-js.css\"></noscript>\n<style>:root{--stx-color-accent:#f60}</style>",
+        "scriptsLeftOut": 2
+      }
+    },
+    {
+      "name": "valid head, scripts on",
+      "input": "<meta charset=\"utf-8\">\n<meta name=\"description\" content=\"Docs &amp; more\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<script async src=\"https://plausible.io/js/script.js\" data-domain=\"docs.acme.dev\"></script>\n<script>window.dataLayer = window.dataLayer || []</script>\n<noscript><link rel=\"stylesheet\" href=\"/no-js.css\"></noscript>\n<style>:root{--stx-color-accent:#f60}</style>\n<!-- analytics -->",
+      "scripts": true,
+      "output": {
+        "html": "<meta charset=\"utf-8\">\n<meta name=\"description\" content=\"Docs &amp; more\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<script async src=\"https://plausible.io/js/script.js\" data-domain=\"docs.acme.dev\"></script>\n<script>window.dataLayer = window.dataLayer || []</script>\n<noscript><link rel=\"stylesheet\" href=\"/no-js.css\"></noscript>\n<style>:root{--stx-color-accent:#f60}</style>",
+        "scriptsLeftOut": 0
+      }
+    },
+    {
+      "name": "escaped: <script>var a = \"<script async>\"; if (n<scripts) {}</script>",
+      "input": "<script>var a = \"<script async>\"; if (n<scripts) {}</script>",
+      "scripts": true,
+      "output": {
+        "html": "<script>var a = \"\\x3Cscript async>\"; if (n<scripts) {}</script>",
+        "scriptsLeftOut": 0
+      }
+    },
+    {
+      "name": "escaped: <script>a<!--b</script>",
+      "input": "<script>a<!--b</script>",
+      "scripts": true,
+      "output": {
+        "html": "<script>a\\x3C!--b</script>",
+        "scriptsLeftOut": 0
+      }
+    },
+    {
+      "name": "escaped: <meta name=\"x\" content=\"a&quot;b<c\" onload=\"x\" foo=\"y\">",
+      "input": "<meta name=\"x\" content=\"a&quot;b<c\" onload=\"x\" foo=\"y\">",
+      "scripts": true,
+      "output": {
+        "html": "<meta name=\"x\" content=\"a&quot;b&lt;c\">",
+        "scriptsLeftOut": 0
+      }
+    }
+  ],
+  "escapeScript": [
+    {
+      "input": "document.write(\"<script src=x></scr\"+\"ipt>\")",
+      "output": "document.write(\"\\x3Cscript src=x></scr\"+\"ipt>\")"
+    },
+    {
+      "input": "a<!--b",
+      "output": "a\\x3C!--b"
+    },
+    {
+      "input": "i<scriptCount",
+      "output": "i<scriptCount"
+    },
+    {
+      "input": "\"<SCRIPT>\"",
+      "output": "\"\\x3CSCRIPT>\""
+    }
+  ]
+}
