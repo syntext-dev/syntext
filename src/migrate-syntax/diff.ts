@@ -1,3 +1,4 @@
+// Copied to syntext-backend src/modules/deprecations/rewrite/diff.ts (dashboard "Fix automatically" and the connector's fix_deprecated_syntax). Keep in step: rewrite.fixtures.json runs in both test suites.
 /**
  * A unified diff (`diff -u` shape, three lines of context) for
  * `stx migrate --dry-run`. Line-based LCS after trimming the common prefix

@@ -1,3 +1,4 @@
+// Copied to syntext-backend src/modules/deprecations/rewrite/page-rewrite.ts (dashboard "Fix automatically" and the connector's fix_deprecated_syntax). Keep in step: rewrite.fixtures.json runs in both test suites.
 /**
  * Apply the deprecation table's page rules to one MDX/Markdown file:
  * frontmatter keys (`rename-frontmatter-key`, `frontmatter-flag-to-value`)

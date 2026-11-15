@@ -1,3 +1,4 @@
+// Copied to syntext-backend src/modules/deprecations/rewrite/yaml-edit.ts (dashboard "Fix automatically" and the connector's fix_deprecated_syntax). Keep in step: rewrite.fixtures.json runs in both test suites.
 /**
  * Edit syntext.yml / syntext.yaml through the YAML document model, which
  * keeps comments, key order and scalar styles. Renamed keys keep their

@@ -1,0 +1,91 @@
+{
+  "_comment": "Shared by syntext-cli (src/migrate-syntax) and syntext-backend (src/modules/deprecations/rewrite): the deprecated-syntax rewrite must give these exact answers in both. Change both copies together.",
+  "pages": [
+    {
+      "name": "frontmatter key and tag",
+      "file": "index.mdx",
+      "input": "---\ntitle: Home\nnoIndex: true\n---\n<Caution>Careful</Caution>\n",
+      "output": "---\ntitle: Home\nnoindex: true\n---\n<Warning>Careful</Warning>\n",
+      "applied": [
+        "frontmatter.noIndex",
+        "mdx.caution"
+      ],
+      "held": []
+    },
+    {
+      "name": "callout type becomes its own tag",
+      "file": "guides/a.mdx",
+      "input": "---\ntitle: A\n---\n<Callout type=\"tip\">x</Callout>\n",
+      "output": "---\ntitle: A\n---\n<Tip>x</Tip>\n",
+      "applied": [
+        "mdx.callout-type"
+      ],
+      "held": []
+    },
+    {
+      "name": "code fences and inline code are left alone",
+      "file": "updates.mdx",
+      "input": "---\ntitle: Updates\n---\n<Update label=\"June\">\nx\n</Update>\n\n```mdx\n<Update label=\"example\">\n```\n\nUse `<Caution>` inline.\n",
+      "output": "---\ntitle: Updates\n---\n<Update title=\"June\">\nx\n</Update>\n\n```mdx\n<Update label=\"example\">\n```\n\nUse `<Caution>` inline.\n",
+      "applied": [
+        "mdx.update-label"
+      ],
+      "held": []
+    },
+    {
+      "name": "fullWidth frontmatter",
+      "file": "wide.mdx",
+      "input": "---\ntitle: Wide\nfullWidth: true\n---\nBody\n",
+      "output": "---\ntitle: Wide\nlayout: full-width\n---\nBody\n",
+      "applied": [
+        "frontmatter.fullWidth"
+      ],
+      "held": []
+    },
+    {
+      "name": "clean page is unchanged",
+      "file": "clean.mdx",
+      "input": "---\ntitle: Clean\n---\n<Warning>ok</Warning>\n",
+      "output": "---\ntitle: Clean\n---\n<Warning>ok</Warning>\n",
+      "applied": [],
+      "held": []
+    }
+  ],
+  "configs": [
+    {
+      "name": "v1 colors: accent moves to themeOverrides, primary waits for v2",
+      "file": "syntext.json",
+      "input": "{\n  \"name\": \"A\",\n  \"theme\": \"default\",\n  \"colors\": {\n    \"primary\": \"#6366F1\",\n    \"accent\": \"#2AC3DE\"\n  }\n}\n",
+      "applyV2": false,
+      "output": "{\n  \"name\": \"A\",\n  \"theme\": \"default\",\n  \"colors\": {\n    \"primary\": \"#6366F1\"\n  },\n  \"themeOverrides\": {\n    \"colors\": {\n      \"light\": {\n        \"accent-strong\": \"#2AC3DE\"\n      },\n      \"dark\": {\n        \"accent-strong\": \"#2AC3DE\"\n      }\n    }\n  }\n}\n",
+      "applied": [
+        "config.colors-accent"
+      ],
+      "held": [
+        "config.colors-primary"
+      ]
+    },
+    {
+      "name": "applyV2 moves primary into appearance",
+      "file": "syntext.json",
+      "input": "{\n  \"name\": \"A\",\n  \"theme\": \"default\",\n  \"colors\": {\n    \"primary\": \"#6366F1\"\n  }\n}\n",
+      "applyV2": true,
+      "output": "{\n  \"name\": \"A\",\n  \"theme\": \"default\",\n  \"appearance\": {\n    \"accent\": \"#6366F1\"\n  }\n}\n",
+      "applied": [
+        "config.colors-primary"
+      ],
+      "held": []
+    },
+    {
+      "name": "YAML keeps comments",
+      "file": "syntext.yml",
+      "input": "# my site\nlanguage: en # main\n",
+      "applyV2": false,
+      "output": "# my site\nlocale: en # main\n",
+      "applied": [
+        "config.language"
+      ],
+      "held": []
+    }
+  ]
+}
