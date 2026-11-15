@@ -1,3 +1,4 @@
+// Copied to syntext-backend src/modules/deprecations/rewrite/json-edit.ts (dashboard "Fix automatically" and the connector's fix_deprecated_syntax). Keep in step: rewrite.fixtures.json runs in both test suites.
 /**
  * Edit a JSON document as text, so everything `stx migrate` does not touch
  * stays byte for byte: key order, spacing, one-line arrays, line endings.
