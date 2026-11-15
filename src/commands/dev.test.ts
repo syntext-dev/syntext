@@ -112,7 +112,7 @@ describe('dev', () => {
     it('should say scripts do not run in previews when _syntext has a script or head.html', async () => {
       await mkdir(join(dir, '_syntext'))
       await writeFile(join(dir, '_syntext', 'head.html'), '<meta>')
-      expect(previewScriptsNote(dir)).toContain('do not run in previews (CSS does)')
+      expect(previewScriptsNote(dir)).toBe('Note: _syntext/*.js and head.html never run in previews (CSS does). On the live site they run only when "Scripts from your docs" / "Head tags from your docs" are on in Integrations › Custom code.')
     })
   })
 

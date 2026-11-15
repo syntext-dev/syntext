@@ -32,10 +32,10 @@ bun test    # run tests
 | Command | Description |
 |---------|-------------|
 | `stx init` | Scaffold a new docs project (`syntext.json` starts with the `$schema` line); `--preset <name>` starts on doc engine v2 with a home page built from the home components |
-| `stx dev` | Watch `docs/`, `public/`, `_syntext/` and the config, and auto-deploy previews (repo CSS applies in previews; repo scripts never run there) |
+| `stx dev` | Watch `docs/`, `public/`, `_syntext/` and the config, and auto-deploy previews (CSS from `_syntext/` applies in previews; `head.html` and scripts never run there) |
 | `stx build` | Build on the Syntext backend and download the static site (for self-hosting) |
 | `stx deploy` | Push to Syntext hosting |
-| `stx check` | Validate `syntext.json`, frontmatter, MDX tags and props, links, repo custom code (`_syntext/`, page `css`) and annotations; `--explain appearance` shows where each look value comes from |
+| `stx check` | Validate `syntext.json`, frontmatter, MDX tags and props, links, custom code from your docs (`_syntext/`, page `css`) and annotations; `--explain appearance` shows where each look value comes from |
 | `stx generate` | Generate API reference pages from `@stx` source annotations |
 | `stx migrate` | Rewrite deprecated Syntext syntax in place; `--from` imports from Mintlify, ReadMe, Docusaurus or GitBook |
 | `stx login` | Authenticate via browser (device flow); stops if denied in the browser |
@@ -113,10 +113,10 @@ words. v1 sites get none of these.
 ⚠ docs/index.mdx:1: This index page shows the generated docs home, which stops on 1 December 2026: …
 ```
 
-### Repo custom code (`_syntext/`)
+### Custom code from your docs (`_syntext/`)
 
-Site-wide custom code ships from the docs repo in a `_syntext/` folder. The
-hosted build renders it; the CLI uploads and validates it.
+Site-wide CSS, head tags and scripts ship from your docs in a `_syntext/`
+folder. The hosted build renders them; the CLI uploads and validates them.
 
 - **Where:** `docs/_syntext/`, or `_syntext/` at the project root. Without a
   `docs/` folder, the project root's `_syntext/` is the folder. If both
@@ -127,39 +127,66 @@ hosted build renders it; the CLI uploads and validates it.
   `<body>`; `head.html` goes into `<head>`. Other files are ignored, and
   nothing in `_syntext/` is ever a page (`stx check` skips it for links and
   syntax).
-- **Limits:** all CSS together at most 50KB; at most 10 `.js` files of at most
-  10KB each; `head.html` at most 10KB. CSS must not contain `</style>`,
-  scripts must not contain `</script>`, and none may contain `</head>` or
-  `</body>`.
-- **Scripts need permission:** CSS always applies. `*.js` and `head.html` run
-  on the live site only when an organization or project admin turns on
-  **Allow scripts from the repository** in the dashboard (Integrations ›
-  Custom scripts; off by default), and never on preview builds (`stx dev`,
-  PR previews), even when allowed.
+- **Switches:** three switches in the dashboard (Integrations › Custom code)
+  decide what the live site applies. Off means the files are ignored, not
+  deleted.
+
+  | Switch | Default | Covers |
+  |---|---|---|
+  | CSS from your docs | on | `_syntext/*.css` and page `css:` |
+  | Head tags from your docs | off | `_syntext/head.html` |
+  | Scripts from your docs | off | `_syntext/*.js` |
+
+  Previews (`stx dev`, PR previews) never apply `head.html` or scripts, even
+  when the switches are on. CSS still applies.
+
+**Rules** (the same in the build, the editor and `stx check`). Sizes are UTF-8
+bytes; a file with a NUL byte or invalid UTF-8 is refused (`is not a text
+file`).
+
+- **CSS:** all `_syntext/*.css` together at most 50KB. No `</style>`,
+  `</head>` or `</body>`, `expression()`, `javascript:` / `vbscript:`,
+  `behavior` or `-moz-binding`. `url()` and `@import` may load only
+  `https://` URLs, relative paths, `#…` and `data:` images and fonts.
+- **Scripts:** at most 10 `*.js` files of at most 10KB each; no `</script>`,
+  `</head>` or `</body>`.
+- **head.html:** at most 10KB, and only `<meta>`, `<link>`, `<script>`,
+  `<noscript>` and `<style>` (no `<base>`, `<title>` or anything else). No
+  `</head>`, `</body>`, `</html>`, `<body` or `<html`. No `<meta http-equiv>`
+  of `refresh`, `set-cookie` or `content-security-policy(-report-only)`.
+  `<script src>` and `<link href>` must be `https://` or relative. `<style>`
+  bodies follow the CSS rules.
 
 A page can add its own stylesheet with the `css` frontmatter key: a path to a
 `.css` file inside the docs folder, relative to the page (`./pricing.css`,
 `../shared/pricing.css`) or from the docs root (`/styles/pricing.css`). It is
-added after the site CSS. URLs, backslashes, other file types, paths outside
-the docs folder, missing files, files over 50KB and the forbidden tags above
+added after the site CSS and follows the CSS rules. URLs, backslashes, other
+file types, paths outside the docs folder, missing files and files over 50KB
 are errors. CSS only: there are no per-page scripts.
 
 `stx dev`, `stx build` and `stx deploy` upload `docs/**` (with
 `docs/_syntext/` and page stylesheets) and the root `_syntext/` files. `stx
-dev` also watches `_syntext/` and prints a note when the project has scripts,
-since previews do not run them.
+dev` also watches `_syntext/` and, when there is a `head.html` or a script,
+notes that previews never run them.
 
 `stx check` reports, for example:
 
 ```
 ✗ docs/_syntext/theme.css: CSS must not contain </style>
+✗ docs/_syntext/theme.css: CSS may load only https:// URLs (found "http://cdn.example.com/a.woff2")
 ✗ docs/_syntext/*.css: combined CSS is 61.2KB; the limit is 50KB
 ✗ docs/_syntext/app.js: script is 12.3KB; the limit is 10KB
+✗ docs/_syntext/head.html: <base> is not allowed (head.html may contain only <meta>, <link>, <script>, <noscript> and <style>)
 ✗ docs/pricing.mdx: css "https://cdn.example.com/x.css" must be a path to a .css file in the docs folder, not a URL
-✗ docs/pricing.mdx: css "./pricing.css": file not found (pricing.css in the docs folder)
-⚠ docs/_syntext/: app.js, head.html run on the live site only when an organization or project admin turns on "Allow scripts from the repository" (dashboard: Integrations › Custom scripts), and never on preview builds (stx dev, PR previews). CSS always applies.
+⚠ docs/_syntext/app.js: _syntext/app.js runs only when "Scripts from your docs" is on in Integrations › Custom code (off by default), and never on previews
 ⚠ _syntext/: ignored: docs/_syntext/ exists and takes precedence. Move these files into docs/_syntext/.
 ```
+
+For a linked project (`projectId` in the config and `stx login`), `stx check`
+reads the switches and names what a switch that is off skips instead
+(`_syntext/app.js is skipped: "Scripts from your docs" is off in Integrations ›
+Custom code`); a switch that is on says nothing. If the switches cannot be
+read, it falls back to the warning above; it never fails the check for that.
 
 Errors fail `stx check` (exit 1); in `--json` each is an issue with `file`,
 `type` and `message`.
@@ -278,6 +305,8 @@ src/
     ├── dashboard-urls.ts # Links into the dashboard (billing, API keys)
     ├── ci-templates.ts   # CI/CD scaffold generators
     ├── repo-custom-code.ts # _syntext/: find, validate, upload
+    ├── custom-code-rules.ts # CSS, script and head.html content rules
+    ├── docs-code-switches.ts # Integrations › Custom code switches and warnings
     ├── page-css.ts       # The page `css` frontmatter key
     └── resolve-docs-root.ts
 

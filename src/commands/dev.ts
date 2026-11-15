@@ -10,7 +10,7 @@ import { resolveDocsRoot } from '../lib/resolve-docs-root'
 import { collectRootCustomCodeFiles, CUSTOM_CODE_DIR, hasRepoScripts } from '../lib/repo-custom-code'
 
 export const devCommand = new Command('dev')
-  .description('Watch for changes and auto-deploy previews (docs/, public/, _syntext/ and the config). Repo CSS applies in previews; repo scripts never run there')
+  .description('Watch for changes and auto-deploy previews (docs/, public/, _syntext/ and the config). CSS from _syntext/ applies in previews; head.html and scripts never run there')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
   .option('--branch <branch>', 'Branch name for preview', 'dev')
   .option('--token <token>', 'Login token or project API key (overrides stx login)')
@@ -105,10 +105,10 @@ export function devWatchDirs(rootDir: string): string[] {
   return ['docs', 'public', CUSTOM_CODE_DIR].map((d) => join(rootDir, d))
 }
 
-/** The note `stx dev` prints when the project ships repo scripts, which previews never run. Null without scripts. */
+/** The note `stx dev` prints when the project has head.html or scripts, which previews never run. Null without them. */
 export function previewScriptsNote(rootDir: string): string | null {
   if (!hasRepoScripts(rootDir)) return null
-  return `Note: ${CUSTOM_CODE_DIR}/*.js and head.html do not run in previews (CSS does). On the live site they run only when an admin allows scripts from the repository.`
+  return `Note: ${CUSTOM_CODE_DIR}/*.js and head.html never run in previews (CSS does). On the live site they run only when "Scripts from your docs" / "Head tags from your docs" are on in Integrations › Custom code.`
 }
 
 /** A revoked session cannot recover while watching: say so and stop. Other errors propagate. */

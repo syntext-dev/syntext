@@ -3,13 +3,14 @@
  * the site CSS. The value is a path to a `.css` file inside the docs folder,
  * relative to the page (`./pricing.css`, `../shared/x.css`) or from the docs
  * root (`/styles/pricing.css`). CSS only: no URLs, no scripts. Rules match
- * syntext-backend.
+ * syntext-backend. The "CSS from your docs" switch covers it.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { posix } from 'node:path'
 import { parse as parseYaml } from 'yaml'
 import { frontmatterBlock } from '../syntax/locate'
-import { cssContentErrors, formatKB, MAX_CSS_BYTES } from './repo-custom-code'
+import { cssContentErrors, decodeText, NOT_TEXT } from './custom-code-rules'
+import { formatKB, MAX_CSS_BYTES } from './repo-custom-code'
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i
 
@@ -63,7 +64,8 @@ export function validatePageCss(source: string, pageFile: string, docsDir: strin
   if (!existsSync(abs) || !statSync(abs).isFile()) return `${label}: file not found (${resolved.path} in the docs folder)`
   const size = statSync(abs).size
   if (size > MAX_CSS_BYTES) return `${label}: the file is ${formatKB(size)}; the limit is 50KB`
-  const content = readFileSync(abs, 'utf-8')
+  const content = decodeText(new Uint8Array(readFileSync(abs)))
+  if (content === null) return `${label}: ${resolved.path} ${NOT_TEXT}`
   const forbidden = cssContentErrors(content)
   if (forbidden.length > 0) return `${label}: ${forbidden.join('; ')}`
   return null
