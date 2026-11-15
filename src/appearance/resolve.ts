@@ -12,9 +12,9 @@
  * Never throws: a bad value is reported as an issue (with "did you mean") and
  * the value it would have replaced stays.
  */
-import { DEFAULT_V2_PRESET, isPresetName, LEGACY_THEMES, PRESET_NAMES, V2_PRESETS, type PresetName } from './presets'
+import { DEFAULT_V2_PRESET, headerBackground, isPresetName, LEGACY_THEMES, PRESET_NAMES, V2_PRESETS, type PresetName } from './presets'
 import { didYouMean } from '../syntax/suggest'
-import { homeCutoffLabel } from '../syntax/home-cutoff'
+import { homeCutoffLabel, homeCutoffPassed } from '../syntax/home-cutoff'
 import {
   COMPONENT_SWITCHES, DENSITIES, HEX, LAYOUT_SWITCHES, MODES, RADII, SIZES, VALUE_ALIASES, WIDTHS,
   type ComponentValues, type Density, type LayoutValues, type Mode, type Radius, type Size, type Width,
@@ -195,7 +195,11 @@ function withoutSetFields(flags: Record<string, unknown>, appearance: unknown): 
 /** The warning for `appearance.layout.home` (the date is modules/deprecations/home-cutoff.ts). */
 export const LAYOUT_HOME_DEPRECATED = `appearance.layout.home is deprecated and stops working on ${homeCutoffLabel()}: the home blocks will then follow the preset. Remove it.`
 
-export function resolveAppearance(config: unknown, opts: { orgTheme?: OrgThemeInput } = {}): AppearanceResult {
+/** The warning for `appearance.layout.home` on and after the cut-off, when it no longer applies. */
+export const LAYOUT_HOME_IGNORED = `appearance.layout.home is ignored since ${homeCutoffLabel()}: the home blocks follow the preset. Remove it.`
+
+/** `now`: the build time (default: the clock), which decides whether `appearance.layout.home` still applies. */
+export function resolveAppearance(config: unknown, opts: { orgTheme?: OrgThemeInput; now?: Date | string } = {}): AppearanceResult {
   const cfg = isObject(config) ? config : {}
   const issues: AppearanceIssue[] = []
   const sources: Record<string, AppearanceSource> = {}
@@ -225,10 +229,18 @@ export function resolveAppearance(config: unknown, opts: { orgTheme?: OrgThemeIn
   if (opts.orgTheme?.appearance !== undefined) apply(out, opts.orgTheme.appearance, 'org-theme', sources, issues, `theme ${rawTheme}`)
   apply(out, cfg.appearance, 'appearance', sources, issues)
   // Deprecated with the generated home (home-as-content.md): still applied until the cut-off, then
-  // ignored with this warning. Wherever it is stored (syntext.json, settings, an org theme), never an error.
+  // ignored with a warning. Wherever it is stored (syntext.json, settings, an org theme), never an error.
   if (sources['layout.home'] === 'appearance' || sources['layout.home'] === 'org-theme') {
-    issues.push({ path: 'appearance.layout.home', severity: 'warning', message: LAYOUT_HOME_DEPRECATED })
+    const passed = homeCutoffPassed(opts.now)
+    if (passed) {
+      out.layout.home = base(preset).layout.home
+      sources['layout.home'] = 'preset'
+    }
+    issues.push({ path: 'appearance.layout.home', severity: 'warning', message: passed ? LAYOUT_HOME_IGNORED : LAYOUT_HOME_DEPRECATED })
   }
+
+  // Unset, the header background follows the header that is drawn: a site that picks the island header floats it.
+  if (sources['layout.headerBackground'] === 'preset') out.layout.headerBackground = headerBackground(out.layout.header)
 
   const v2 = Boolean(orgTheme) || (rawTheme !== '' && isPresetName(rawTheme)) || cfg.appearance !== undefined
   return { v2, appearance: out, sources, issues, ...(orgTheme ? { orgTheme } : {}) }

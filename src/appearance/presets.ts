@@ -24,6 +24,11 @@ export type PresetDefaults = {
 type Shell = [LayoutValues['shell'], LayoutValues['header'], LayoutValues['nav'], LayoutValues['toc']]
 type Blocks = [ComponentValues['callout'], ComponentValues['steps'], ComponentValues['code'], ComponentValues['cards'], ComponentValues['tabs'], ComponentValues['api']]
 
+/** A preset's `layout.headerBackground`: `transparent` for the floating island header, `solid` for every other (tokens.py `header_background`). */
+export function headerBackground(header: LayoutValues['header']): LayoutValues['headerBackground'] {
+  return header === 'island' ? 'transparent' : 'solid'
+}
+
 function preset(label: string, font: string, mono: string, size: Size, radius: Radius, accent: string, mode: Mode, shell: Shell, blocks: Blocks): PresetDefaults {
   const [s, header, nav, toc] = shell
   const [callout, steps, code, cards, tabs, api] = blocks
@@ -34,9 +39,10 @@ function preset(label: string, font: string, mono: string, size: Size, radius: R
     radius,
     accent,
     mode,
-    // The home follows the preset: its own header value (layout.home).
-    layout: { shell: s, header, home: header, nav, toc, groups: 'collapsible' },
-    components: { callout, steps, code, cards, tabs, api },
+    // The home follows the preset: its own header value (layout.home). A floating
+    // island header has no band behind it (tokens.py `header_background`).
+    layout: { shell: s, header, home: header, nav, toc, groups: 'collapsible', headerBackground: headerBackground(header) },
+    components: { callout, steps, code, cards, tabs, api, codeRadius: 'site' },
   }
 }
 
@@ -51,7 +57,8 @@ export const V2_PRESETS: Readonly<Record<PresetName, PresetDefaults>> = {
     ['enterprise', 'mega', 'chevrons', 'rule'], ['box', 'procedure', 'navy', 'accent', 'boxed', 'boxed']),
   plain: preset('Plain', 'Hanken Grotesk', 'Fira Code', 16, 'small', '#6D28D9', 'light',
     ['minimal', 'simple', 'plain', 'plain'], ['soft', 'list', 'plain', 'plain', 'text', 'plain']),
-  // Orbit's nav is `sections` (backend modules/appearance/presets.ts); `dock` stays a value.
+  // Orbit's nav is `sections` (Figma 2934:2, "Orbit (simpler)"), which the
+  // generator does not draw; tokens.py still says `dock`, which stays a value.
   orbit: preset('Orbit', 'Manrope', 'DM Mono', 16, 'large', '#4F46E5', 'light',
     ['floating', 'island', 'sections', 'float'], ['float', 'stack', 'float', 'bento', 'segment', 'split']),
   grid: preset('Grid', 'Inter Tight', 'IBM Plex Mono', 16, 'none', '#E11D48', 'light',
