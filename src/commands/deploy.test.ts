@@ -93,6 +93,15 @@ describe('deploy session handling', () => {
     expect(output.join('')).toContain('specs/api.yaml')
   })
 
+  it('should refuse --branch without --preview before uploading, so it never deploys to production', async () => {
+    await writeFile(join(dir, 'syntext.json'), JSON.stringify({ name: 'x', projectId: 'p1' }))
+    await writeFile(join(dir, 'index.mdx'), '# Home')
+    await deployCommand.parseAsync(['--dir', dir, '--branch', 'feature-x', '--json'], { from: 'user' }).catch(() => undefined)
+    expect(seen).toBeUndefined()
+    expect(JSON.parse(output.join(''))).toMatchObject({ success: false })
+    expect(output.join('')).toContain('--preview')
+  })
+
   it('should describe --token as a login token or project API key', () => {
     expect(deployCommand.helpInformation()).toContain('project API key')
   })
