@@ -49,11 +49,11 @@ describe('cssContentErrors', () => {
     expect(cssContentErrors('a{-moz-binding:url(#x)}')).toEqual(['CSS must not use behavior or -moz-binding'])
   })
 
-  it('should refuse url() and @import targets that are not https, relative or data images and fonts', () => {
+  it('should refuse url() and @import targets that are not https, relative or data images and fonts, naming the first (as the hosted build)', () => {
     expect(cssContentErrors('a{background:url(http://x/a.png)} @import "//x/b.css";')).toEqual([
       'CSS may load only https:// URLs (found "http://x/a.png")',
-      'CSS may load only https:// URLs (found "//x/b.css")',
     ])
+    expect(cssContentErrors('@import "//x/b.css";')).toEqual(['CSS may load only https:// URLs (found "//x/b.css")'])
   })
 
   it('should report a repeated problem once', () => {
