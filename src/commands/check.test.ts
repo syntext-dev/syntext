@@ -124,6 +124,17 @@ describe('check command: syntax and --explain', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
+  it('should check pages at the project root when there is no docs/ folder', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'stx-check-'))
+    await writeFile(join(dir, 'syntext.json'), '{ "name": "A" }\n')
+    await writeFile(join(dir, 'index.mdx'), '---\ntitle: Home\nnoIndex: true\n---\n<Caution>x</Caution>\n[gone](/missing)\n')
+    const { out } = await run(['--dir', dir, '--json'])
+    const body = JSON.parse(out) as { issues: Array<{ file: string; code?: string; message: string }> }
+    expect(body.issues.filter((i) => i.code).map((i) => `${i.file} ${i.code}`)).toEqual(['index.mdx frontmatter.noIndex', 'index.mdx mdx.caution'])
+    expect(body.issues).toEqual(expect.arrayContaining([expect.objectContaining({ file: 'index.mdx', message: 'Broken link: /missing' })]))
+    await rm(dir, { recursive: true, force: true })
+  })
+
   it('should explain the appearance as JSON', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'stx-check-'))
     await writeFile(join(dir, 'syntext.json'), '{ "theme": "orbit" }\n')

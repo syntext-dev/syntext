@@ -31,6 +31,10 @@ Examples:
   $ stx migrate --v2               Also move colors, fonts and style flags into appearance
   $ stx migrate --from mintlify    Import a Mintlify site
 
+Pages are read from docs/, or from the project folder when docs/ holds no .md or
+.mdx page (as the hosted build does), skipping node_modules, dist, _syntext/ and
+dot folders. Not using a terminal? Use "Fix automatically" in the dashboard.
+
 The generated docs home (doc engine v2) stops on 1 December 2026. stx migrate writes it
 into docs/index.mdx as home components (<Hero title>, <SectionCards>, <LatestUpdates>, …)
 with layout: wide, so the page looks the same. It uses the last build's site data

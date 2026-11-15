@@ -226,6 +226,13 @@ copy bundled with stx. Moves into `appearance` switch a v1 site to doc engine
 v2, so they wait for `--v2`; the summary lists them, and anything that needs a
 person (unknown keys, a prop set under both names).
 
+Pages are read where the hosted build reads them: `docs/` when it holds
+`.md`/`.mdx` pages, otherwise the folder that holds `syntext.json`
+(`node_modules`, `dist`, `_syntext/` and dot folders are skipped). `stx check`
+uses the same folder. The same rewrite is available without a terminal:
+**Fix automatically** in the dashboard, or the `fix_deprecated_syntax` tool in
+the Syntext MCP connector; both open a pull request or a draft.
+
 **The generated docs home** (`home-to-mdx`, doc engine v2 only): the docs root
 `index.mdx` gets the home components the preset's home drew, in the layout's
 order, with authored `home` items as children; `home` is dropped, `layout:

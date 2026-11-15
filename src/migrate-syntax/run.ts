@@ -11,6 +11,7 @@ import { readFile, rename, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { resolveAppearance } from '../appearance/resolve'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
+import { findPagesDir, listPageFiles } from '../lib/pages-dir'
 import { checkSyntax, readSiteConfig, type SyntaxIssue } from '../syntax/check-syntax'
 import { isYamlConfig, parseSiteConfigText } from '../syntax/parse'
 import type { TableItem } from '../syntax/table-source'
@@ -38,13 +39,6 @@ export type SyntaxMigrationResult = {
 }
 
 type Pending = { abs: string; file: string; before: string; after: string; renameTo?: string }
-
-async function listPages(docsDir: string): Promise<string[]> {
-  const out: string[] = []
-  if (!existsSync(docsDir)) return out
-  for await (const f of new Bun.Glob('**/*.{md,mdx}').scan({ cwd: docsDir })) if (!f.split('/').includes('node_modules')) out.push(f)
-  return out.sort()
-}
 
 /** No API: the site data for the home conversion comes from the local files. */
 const LOCAL_ONLY: HomeSiteProvider = homeSiteProvider({ apiUrl: '', token: null, projectId: null })
@@ -97,8 +91,9 @@ export async function migrateSyntax(opts: {
   unsupported.push(...unsupportedPageRules(opts.items))
   // After the config rules: `--v2` can switch the site to doc engine v2, where the generated home is deprecated.
   const siteIsV2 = newConfig ? resolveAppearance(newConfig.config).v2 : false
-  const docsDir = join(docsRoot, 'docs')
-  const docsFiles = await listPages(docsDir)
+  // Pages live in docs/, or next to the config when docs/ holds none (as in the hosted build).
+  const { dir: docsDir } = await findPagesDir(docsRoot)
+  const docsFiles = await listPageFiles(docsDir)
   const pages: Array<{ file: string; source: string; docsFile: string }> = []
   let home: SyntaxMigrationResult['home']
   for (const f of docsFiles) {
