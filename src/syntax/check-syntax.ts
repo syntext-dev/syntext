@@ -11,10 +11,10 @@
  * the schema's messages (the build's resolvers for those are not copied).
  */
 import { join, relative } from 'node:path'
-import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { resolveAppearance } from '../appearance/resolve'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
+import { findPagesDir, listPageFiles } from '../lib/pages-dir'
 import { lineLocator } from './locate'
 import { parseSiteConfigText, SITE_CONFIG_FILES, SiteConfigError } from './parse'
 import { scanConfigDeprecations } from './scan-config'
@@ -123,12 +123,9 @@ export async function checkProjectSyntax(rootDir: string): Promise<{ configFile:
   const loaded = await readSiteConfig(docsRoot)
   const configFile = loaded ? rel(join(docsRoot, loaded.fileName)) : null
   const pages: Array<{ file: string; source: string; docsFile: string }> = []
-  const docsDir = join(docsRoot, 'docs')
-  if (existsSync(docsDir)) {
-    const files: string[] = []
-    for await (const f of new Bun.Glob('**/*.{md,mdx}').scan({ cwd: docsDir })) if (!f.split('/').includes('node_modules') && f.split('/')[0] !== '_syntext') files.push(f)
-    for (const f of files.sort()) pages.push({ file: rel(join(docsDir, f)), docsFile: f, source: await readFile(join(docsDir, f), 'utf-8') })
-  }
+  // docs/, or the project folder when docs/ holds no pages: where the hosted build looks.
+  const { dir: docsDir } = await findPagesDir(docsRoot)
+  for (const f of await listPageFiles(docsDir)) pages.push({ file: rel(join(docsDir, f)), docsFile: f, source: await readFile(join(docsDir, f), 'utf-8') })
   const { issues } = checkSyntax({
     config: loaded && 'config' in loaded ? { ...loaded, fileName: configFile as string } : null,
     ...(loaded && 'error' in loaded ? { configError: { fileName: configFile as string, message: loaded.error } } : {}),

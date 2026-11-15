@@ -89,6 +89,26 @@ describe('migrateSyntax', () => {
     expect(r.files.map((f) => f.file)).toEqual(['.syntext/docs/a.mdx'])
   })
 
+  it('should rewrite pages that live next to syntext.json when there is no docs/ folder', async () => {
+    const root = await site({
+      'syntext.json': '{ "name": "A" }\n',
+      'index.mdx': '---\ntitle: Home\nnoIndex: true\n---\n<Caution>c</Caution>\n',
+      'guides/a.mdx': '---\ntitle: A\nfullWidth: true\n---\n<Callout type="tip">x</Callout>\n',
+      'node_modules/pkg/readme.md': '<Caution>x</Caution>\n',
+      '_syntext/notes.mdx': '<Caution>x</Caution>\n',
+      'dist/index.mdx': '<Caution>x</Caution>\n',
+    })
+    const dry = await migrateSyntax({ rootDir: root, dryRun: true, applyV2: false, items })
+    expect(dry.files.map((f) => f.file)).toEqual(['index.mdx', 'guides/a.mdx'].sort())
+    await migrateSyntax({ rootDir: root, dryRun: false, applyV2: false, items })
+    expect(await read('index.mdx')).toBe('---\ntitle: Home\nnoindex: true\n---\n<Warning>c</Warning>\n')
+    expect(await read('guides/a.mdx')).not.toContain('Callout type')
+    expect(await read('node_modules/pkg/readme.md')).toBe('<Caution>x</Caution>\n')
+    expect(await read('_syntext/notes.mdx')).toBe('<Caution>x</Caution>\n')
+    const again = await migrateSyntax({ rootDir: root, dryRun: false, applyV2: false, items })
+    expect(again.files).toEqual([])
+  })
+
   it('should stop with a clear error when the config does not parse', async () => {
     const root = await site({ 'syntext.json': '{ nope' })
     await expect(migrateSyntax({ rootDir: root, dryRun: false, applyV2: false, items })).rejects.toThrow('syntext.json is not valid JSON')

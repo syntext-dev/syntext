@@ -219,6 +219,16 @@ describe('checkProjectSyntax', () => {
     expect(r.issues.map((i) => `${i.file}:${i.line} ${i.code}`)).toEqual(['docs/index.mdx:1 frontmatter.implicit-home'])
   })
 
+  it('should check pages at the project root when there is no docs/ folder, as the hosted build does', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'stx-proj-'))
+    await mkdir(join(dir, 'node_modules/x'), { recursive: true })
+    await writeFile(join(dir, 'syntext.json'), '{ "name": "A" }\n')
+    await writeFile(join(dir, 'index.mdx'), '---\ntitle: Home\nnoIndex: true\n---\n<Caution>x</Caution>\n')
+    await writeFile(join(dir, 'node_modules/x/readme.md'), '<Caution>x</Caution>\n')
+    const r = await checkProjectSyntax(dir)
+    expect(r.issues.map((i) => `${i.file}:${i.line} ${i.code}`)).toEqual(['index.mdx:3 frontmatter.noIndex', 'index.mdx:5 mdx.caution'])
+  })
+
   it('should work without a config or a docs folder', async () => {
     dir = await mkdtemp(join(tmpdir(), 'stx-proj-'))
     expect(await checkProjectSyntax(dir)).toEqual({ configFile: null, issues: [] })

@@ -11,7 +11,8 @@ import { loadStyleGuide, validateStyleGuide } from '../annotations/style-guide'
 import { checkProjectSyntax } from '../syntax/check-syntax'
 import { runExplain } from './check-explain'
 import { checkCustomCodeFolder, checkPageCss, type PageCss } from './check-custom-code'
-import { isInCustomCodeDir } from '../lib/repo-custom-code'
+import { findPagesDir, listPageFiles } from '../lib/pages-dir'
+import { resolveDocsRoot } from '../lib/resolve-docs-root'
 
 /**
  * Remove fenced code blocks and inline code spans so their contents
@@ -73,6 +74,9 @@ export const checkCommand = new Command('check')
 Deprecated config keys, frontmatter keys and MDX tags and props are warnings
 with the file, the line and the replacement; \`stx migrate\` rewrites them.
 Unknown keys and values are warnings with the closest valid name.
+Pages are read from docs/, or from the project folder when docs/ holds no
+.md or .mdx page (as the hosted build does), skipping node_modules, dist,
+_syntext/ and dot folders.
 
 Custom code from your docs in _syntext/ (docs/_syntext/, or _syntext/ at the
 project root) is checked with the build's rules: all *.css together at most
@@ -97,23 +101,16 @@ Examples:
       return
     }
     const rootDir = resolve(options.dir)
-    const docsDir = join(rootDir, 'docs')
+    // docs/, or the project folder when docs/ holds no pages (as in the hosted build).
+    const { dir: docsDir } = await findPagesDir((await resolveDocsRoot(rootDir)).docsRoot)
     const spinner = options.json || options.markdown ? null : ora('Checking documentation...').start()
 
     const issues: Array<{ file: string; type: string; message: string; line?: number; code?: string }> = []
 
     try {
       // --- Phase 1: MDX validation (existing) ---
-      const mdxGlob = new Bun.Glob('**/*.{md,mdx}')
-      const files: string[] = []
-      try {
-        for await (const file of mdxGlob.scan({ cwd: docsDir })) {
-          // _syntext/ holds site-wide custom code and is never a page.
-          if (!isInCustomCodeDir(file)) files.push(file)
-        }
-      } catch {
-        // No docs directory — skip MDX checks
-      }
+      // Skips _syntext/ (custom code, never a page), node_modules, dist and dot folders.
+      const files = await listPageFiles(docsDir)
 
       const pageCss: PageCss[] = []
       for (const file of files) {
