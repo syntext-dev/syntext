@@ -131,6 +131,23 @@ describe('build session handling', () => {
     expect((seen?.body as FormData).getAll('paths')).toEqual(expect.arrayContaining(['docs/index.mdx', '_syntext/theme.css']))
   })
 
+  it('should upload a config-declared spec in a subfolder, not only root openapi.* files', async () => {
+    await writeFile(join(dir, 'syntext.json'), JSON.stringify({ name: 'x', projectId: 'p1', openapi: [{ path: './specs/v1.yaml', prefix: '/v1' }] }))
+    await mkdir(join(dir, 'specs'))
+    await writeFile(join(dir, 'specs', 'v1.yaml'), 'openapi: 3.0.0')
+    await buildCommand.parseAsync(['--dir', dir, '--json'], { from: 'user' }).catch(() => undefined)
+    expect((seen?.body as FormData).getAll('paths')).toEqual(expect.arrayContaining(['docs/index.mdx', 'specs/v1.yaml']))
+  })
+
+  it('should upload pages that sit next to syntext.json', async () => {
+    await rm(join(dir, 'docs'), { recursive: true })
+    await writeFile(join(dir, 'index.md'), '# Home')
+    await mkdir(join(dir, 'dist'))
+    await writeFile(join(dir, 'dist', 'old.md'), '# built')
+    await buildCommand.parseAsync(['--dir', dir, '--json'], { from: 'user' }).catch(() => undefined)
+    expect([...(seen?.body as FormData).getAll('paths')].sort()).toEqual(['index.md', 'syntext.json'])
+  })
+
   it('should describe --token as a login token or project API key', () => {
     expect(buildCommand.helpInformation()).toContain('project API key')
   })

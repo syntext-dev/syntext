@@ -32,7 +32,7 @@ bun test    # run tests
 | Command | Description |
 |---------|-------------|
 | `stx init` | Scaffold a new docs project (`syntext.json` starts with the `$schema` line); `--preset <name>` starts on doc engine v2 with a home page built from the home components |
-| `stx dev` | Watch `docs/`, `public/`, `_syntext/` and the config, and auto-deploy previews (CSS from `_syntext/` applies in previews; `head.html` and scripts never run there) |
+| `stx dev` | Watch your pages (in `docs/` or next to `syntext.json`), `public/`, `_syntext/` and the config, and auto-deploy previews (CSS from `_syntext/` applies in previews; `head.html` and scripts never run there) |
 | `stx build` | Build on the Syntext backend and download the static site (for self-hosting) |
 | `stx deploy` | Push to Syntext hosting |
 | `stx check` | Validate `syntext.json`, frontmatter, MDX tags and props, links, custom code from your docs (`_syntext/`, page `css`) and annotations; `--explain appearance` shows where each look value comes from |
@@ -171,10 +171,31 @@ added after the site CSS and follows the CSS rules. URLs, backslashes, other
 file types, paths outside the docs folder, missing files and files over 50KB
 are errors. CSS only: there are no per-page scripts.
 
-`stx dev`, `stx build` and `stx deploy` upload `docs/**` (with
-`docs/_syntext/` and page stylesheets) and the root `_syntext/` files. `stx
-dev` also watches `_syntext/` and, when there is a `head.html` or a script,
-notes that previews never run them.
+`stx dev`, `stx build` and `stx deploy` upload your pages (see below) and the
+root `_syntext/` files. `stx dev` also watches `_syntext/` and, when there is a
+`head.html` or a script, notes that previews never run them.
+
+### What `stx dev`, `stx build` and `stx deploy` upload
+
+Pages can live in `docs/` or at the project root, next to `syntext.json`. The
+CLI uses `docs/` when it has `.md`/`.mdx` pages at its top level, otherwise the
+project root (the rule the hosted build uses), and uploads them either way:
+
+- **Pages in `docs/`:** everything in `docs/` (with `docs/_syntext/` and page
+  stylesheets).
+- **Pages at the project root:** pages, `_meta.json`, `_redirects.json` and
+  images or media anywhere under the root, except in `node_modules/`, `.git/`,
+  `dist/`, `.next/`, `out/`, `build/`, dot folders and paths `.gitignore`
+  ignores. Source code, `package.json` and lockfiles are not uploaded. The
+  upload is capped at 100 MB; above that, move your pages into `docs/`.
+- **Always:** the config file, `docs.json`, `public/`, the root `_syntext/`
+  files, the OpenAPI specs `openapi` names in `syntext.json` (wherever they
+  live; `openapi.json`/`.yaml`/`.yml` at the root when it names none) and
+  GraphQL, gRPC and AsyncAPI schemas. A spec `openapi` names but that is missing
+  stops the upload.
+- **Never:** `.env*` files, private keys and certificates (`*.pem`, `*.key`,
+  `*.p12`, `*.pfx`, `id_rsa` and similar) and credential files
+  (`credentials.json`, `.npmrc`, `.netrc`).
 
 `stx check` reports, for example:
 
@@ -319,6 +340,10 @@ src/
     ├── dashboard-urls.ts # Links into the dashboard (billing, API keys)
     ├── ci-templates.ts   # CI/CD scaffold generators
     ├── repo-custom-code.ts # _syntext/: find, validate, upload
+    ├── source-bundle.ts  # The upload for build, deploy and dev (docs/ or root pages)
+    ├── source-specs.ts   # OpenAPI specs and protocol schemas to upload
+    ├── upload-filter.ts  # Root-layout walk: excluded folders, secrets, .gitignore
+    ├── pages-dir.ts      # docs/ or the project root, as the hosted build decides
     ├── custom-code-rules.ts # CSS, script and head.html content rules
     ├── docs-code-switches.ts # Integrations › Custom code switches and warnings
     ├── page-css.ts       # The page `css` frontmatter key

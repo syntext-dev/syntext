@@ -1,105 +1,13 @@
 import { Command } from 'commander'
 import { join } from 'node:path'
-import { readdir } from 'node:fs/promises'
 import chalk from 'chalk'
 import ora from 'ora'
 import { loadConfig, configFileExists } from '../lib/config'
-import type { SyntextConfig } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
 import { apiFetch, jsonError } from '../lib/api'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
-import { collectRootCustomCodeFiles } from '../lib/repo-custom-code'
+import { appendSourceFiles, collectSourceBundle } from '../lib/source-bundle'
 import { waitForBuild, type QueuedBehind } from '../lib/build-wait'
-
-/**
- * Every OpenAPI spec path a deploy must upload, derived from the `openapi`
- * config rather than a fixed filename list.
- *
- * Accepts all three documented forms — a single path, a list of paths, or
- * entries pairing a path with a URL prefix — and falls back to the conventional
- * root filenames when the config declares nothing, so projects that relied on
- * `openapi.json` sitting at the root keep working.
- *
- * Paths are returned relative to the project root, with any leading `./`
- * stripped, because that is the shape the upload bundle expects.
- */
-export function collectSpecPaths(config: SyntextConfig, _rootDir: string): string[] {
-  return collectSpecs(config).paths
-}
-
-/**
- * Spec paths plus whether they were declared in config.
- *
- * The distinction matters: a spec the config names but that is absent is a
- * mistake worth failing on, whereas the conventional root filenames are only
- * candidates — most projects have none of them, and that is normal.
- */
-export function collectSpecs(config: SyntextConfig): { paths: string[]; declared: boolean } {
-  const normalize = (p: string) => p.replace(/^\.\//, '').trim()
-  const spec = config.openapi
-
-  const declared: string[] = []
-  if (typeof spec === 'string') {
-    declared.push(spec)
-  } else if (Array.isArray(spec)) {
-    for (const entry of spec) {
-      if (typeof entry === 'string') declared.push(entry)
-      else if (entry && typeof entry.path === 'string') declared.push(entry.path)
-    }
-  }
-
-  if (declared.length > 0) {
-    // De-duplicate: two prefixes may legitimately share one spec file.
-    return { paths: [...new Set(declared.map(normalize).filter(Boolean))], declared: true }
-  }
-
-  // Nothing declared — keep the historical convention. These are candidates, so
-  // their absence is expected rather than an error.
-  return { paths: ['openapi.json', 'openapi.yaml', 'openapi.yml'], declared: false }
-}
-
-/**
- * Directories and extensions the build pipeline searches for protocol schemas.
- * Mirrors `findFileByExtension` in the backend build worker — if that list
- * changes, this must change with it, or the schema is uploaded but never found
- * (or worse, found by the build but never uploaded).
- */
-const SCHEMA_DIRS = ['', 'api/', 'spec/', 'docs/', 'proto/', 'schema/']
-const SCHEMA_EXTENSIONS = ['.graphql', '.gql', '.proto', 'asyncapi.yaml', 'asyncapi.yml', 'asyncapi.json']
-
-/**
- * Protocol schema files (GraphQL, gRPC, AsyncAPI) the build would look for.
- *
- * Same failure mode as the OpenAPI bug: the build searches several directories,
- * but a deploy only uploaded docs/ and public/. A .proto in proto/ or a schema
- * in schema/ never reached the build, so the reference pages it would have
- * generated were silently absent.
- *
- * Returns paths relative to the project root. Files already covered by the
- * docs/ upload are skipped, since they are uploaded anyway.
- */
-export async function collectSchemaPaths(
-  rootDir: string,
-  readdirFn: (dir: string) => Promise<string[]>
-): Promise<string[]> {
-  const found: string[] = []
-  for (const dir of SCHEMA_DIRS) {
-    let entries: string[]
-    try {
-      entries = await readdirFn(join(rootDir, dir))
-    } catch {
-      continue // directory does not exist — expected for most projects
-    }
-    for (const entry of entries) {
-      if (!SCHEMA_EXTENSIONS.some((ext) => entry.endsWith(ext))) continue
-      const rel = `${dir}${entry}`
-      // docs/ is uploaded wholesale already.
-      if (rel.startsWith('docs/')) continue
-      found.push(rel)
-    }
-  }
-  return [...new Set(found)]
-}
 
 export const deployCommand = new Command('deploy')
   .description('Deploy documentation to Syntext (server-side compilation)')
@@ -169,93 +77,13 @@ export const deployCommand = new Command('deploy')
         return
       }
 
-      // Collect source files (docs/, public/, syntext.json, docs.json)
+      // Collect source files: pages from docs/ or the project root, plus the
+      // config, assets, custom code, API specs and schemas (lib/source-bundle.ts).
       if (spinner) spinner.text = 'Collecting source files...'
-
-      const sourceFiles: Array<{ path: string; content: Buffer }> = []
-
-      // Include config file (first match wins)
-      const configNames = ['syntext.json', 'syntext.yaml', 'syntext.yml', 'stx.json', 'stx.yaml', 'stx.yml']
-      for (const name of configNames) {
-        const configPath = join(rootDir, name)
-        const configFile = Bun.file(configPath)
-        if (await configFile.exists()) {
-          sourceFiles.push({ path: name, content: Buffer.from(await configFile.arrayBuffer()) })
-          break
-        }
-      }
-
-      // Include docs.json if present
-      const docsJsonPath = join(rootDir, 'docs.json')
-      const docsJsonFile = Bun.file(docsJsonPath)
-      if (await docsJsonFile.exists()) {
-        sourceFiles.push({ path: 'docs.json', content: Buffer.from(await docsJsonFile.arrayBuffer()) })
-      }
-
-      // Include all docs/ files
-      const docsDir = join(rootDir, 'docs')
-      const docsGlob = new Bun.Glob('**/*')
-      for await (const file of docsGlob.scan({ cwd: docsDir })) {
-        const filePath = join(docsDir, file)
-        const content = await Bun.file(filePath).arrayBuffer()
-        sourceFiles.push({ path: `docs/${file}`, content: Buffer.from(content) })
-      }
-
-      // Include all public/ files (assets)
-      const publicDir = join(rootDir, 'public')
-      const publicGlob = new Bun.Glob('**/*')
-      try {
-        for await (const file of publicGlob.scan({ cwd: publicDir })) {
-          const filePath = join(publicDir, file)
-          const content = await Bun.file(filePath).arrayBuffer()
-          sourceFiles.push({ path: `public/${file}`, content: Buffer.from(content) })
-        }
-      } catch {
-        // public/ dir doesn't exist — that's fine
-      }
-
-      // Root _syntext/ (repo custom code). docs/_syntext/ ships with docs/ above.
-      sourceFiles.push(...await collectRootCustomCodeFiles(rootDir))
-
-      // Include OpenAPI specs.
-      //
-      // This used to check only for openapi.{json,yaml,yml} at the project root,
-      // which silently dropped every spec declared via the `openapi` config —
-      // including the array form pointing at a subdirectory. The build then
-      // generated no API reference pages and reported success, so a project with
-      // specs would deploy with its entire API reference missing.
-      const { paths: specPaths, declared: specsDeclared } = collectSpecs(config)
-      const missingSpecs: string[] = []
-      for (const rel of specPaths) {
-        const specFile = Bun.file(join(rootDir, rel))
-        if (await specFile.exists()) {
-          sourceFiles.push({ path: rel, content: Buffer.from(await specFile.arrayBuffer()) })
-        } else {
-          missingSpecs.push(rel)
-        }
-      }
-
-      // Protocol schemas (GraphQL / gRPC / AsyncAPI) live outside docs/ by
-      // convention, so they need collecting explicitly too.
-      for (const rel of await collectSchemaPaths(rootDir, (d) => readdir(d))) {
-        const f = Bun.file(join(rootDir, rel))
-        if (await f.exists()) {
-          sourceFiles.push({ path: rel, content: Buffer.from(await f.arrayBuffer()) })
-        }
-      }
-
-      // A declared-but-absent spec means the deploy would drop pages. Fail rather
-      // than publish a site quietly missing its API reference.
-      if (specsDeclared && missingSpecs.length > 0) {
-        throw new Error(
-          `OpenAPI spec(s) declared in your config but not found:\n` +
-            missingSpecs.map((m) => `  - ${m}`).join('\n') +
-            `\n\nDeploying would publish a site with no API reference pages for them.`
-        )
-      }
+      const { files: sourceFiles } = await collectSourceBundle(rootDir, config)
 
       if (sourceFiles.length === 0) {
-        throw new Error('No source files found. Make sure you have a docs/ directory.')
+        throw new Error('No source files found. Put your pages in a docs/ folder or next to syntext.json.')
       }
 
       // Upload source files to API for server-side compilation
@@ -267,10 +95,7 @@ export const deployCommand = new Command('deploy')
         formData.append('branch', options.branch)
       }
 
-      for (const file of sourceFiles) {
-        formData.append('files', new Blob([file.content]), file.path)
-        formData.append('paths', file.path)
-      }
+      appendSourceFiles(formData, sourceFiles)
 
       const res = await apiFetch(`${apiUrl}/v1/projects/${projectId}/deploy`, {
         method: 'POST',
