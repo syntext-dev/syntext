@@ -17,7 +17,7 @@ const program = new Command()
 program
   .name('stx')
   .description('Write, preview and publish Syntext docs from your terminal.')
-  .version('0.11.2')
+  .version('0.11.3')
 
 program.addCommand(initCommand)
 program.addCommand(devCommand)
