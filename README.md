@@ -138,7 +138,11 @@ folder. The hosted build renders them; the CLI uploads and validates them.
   | Scripts from your docs | off | `_syntext/*.js` |
 
   Previews (`stx dev`, PR previews) never apply `head.html` or scripts, even
-  when the switches are on. CSS still applies.
+  when the switches are on. CSS still applies. `<script>` tags inside
+  `head.html` need "Scripts from your docs" too: head tags alone never run
+  JavaScript. `stx deploy` ships `head.html` and scripts only when you deploy
+  as a workspace admin (or with a full-access API key an admin created);
+  anyone else's deploy goes out without them, with a warning.
 
 **Rules** (the same in the build, the editor and `stx check`). Sizes are UTF-8
 bytes; a file with a NUL byte or invalid UTF-8 is refused (`is not a text
@@ -146,16 +150,19 @@ file`).
 
 - **CSS:** all `_syntext/*.css` together at most 50KB. No `</style>`,
   `</head>` or `</body>`, `expression()`, `javascript:` / `vbscript:`,
-  `behavior` or `-moz-binding`. `url()` and `@import` may load only
-  `https://` URLs, relative paths, `#…` and `data:` images and fonts.
+  `behavior` or `-moz-binding` (escaped spellings count). `url()`,
+  `@import`, `image-set()` and `src()` may load only `https://` URLs,
+  relative paths, `#…` and `data:` images and fonts.
 - **Scripts:** at most 10 `*.js` files of at most 10KB each; no `</script>`,
   `</head>` or `</body>`.
 - **head.html:** at most 10KB, and only `<meta>`, `<link>`, `<script>`,
-  `<noscript>` and `<style>` (no `<base>`, `<title>` or anything else). No
-  `</head>`, `</body>`, `</html>`, `<body` or `<html`. No `<meta http-equiv>`
-  of `refresh`, `set-cookie` or `content-security-policy(-report-only)`.
-  `<script src>` and `<link href>` must be `https://` or relative. `<style>`
-  bodies follow the CSS rules.
+  `<noscript>` and `<style>` (no `<base>`, `<title>` or anything else, and no
+  text between them). No `</head>`, `</body>`, `</html>`, `<body` or `<html`,
+  and no malformed comments. Each element takes its usual attributes plus
+  `id` and `data-*`; event handlers (`onload=…`) are refused. `<meta
+  http-equiv>` may be only `content-type`, `default-style`, `x-ua-compatible`
+  or `content-language`. `<script src>` and `<link href>` must be `https://`
+  or relative. `<style>` bodies follow the CSS rules.
 
 A page can add its own stylesheet with the `css` frontmatter key: a path to a
 `.css` file inside the docs folder, relative to the page (`./pricing.css`,
