@@ -1,7 +1,9 @@
 // Copied from syntext-backend src/modules/deprecations/home-cutoff.ts (doc engine v2). Keep in step: src/syntax/sync.test.ts compares the copies.
 /**
- * The generated docs home's cut-off (home-as-content.md): the last day an
- * index page that has not opted in still renders the generated home.
+ * The generated docs home's cut-off (home-as-content.md): from this day (UTC)
+ * a v2 build renders every index page as its own content; `home` frontmatter
+ * and `appearance.layout.home` are ignored with a warning. Builds before it
+ * keep the generated home and warn that it stops on this date.
  *
  * One constant for every message: build warnings, the registry's fixes, the
  * frontmatter catalogue, MCP authoring hints and the home-change notice email.
@@ -22,4 +24,10 @@ export const HOME_DEPRECATION_CODES = ['frontmatter.home', 'frontmatter.implicit
 export function homeCutoffLabel(iso: string = HOME_CUTOFF): string {
   const d = new Date(`${iso}T00:00:00Z`)
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+}
+
+/** Whether a build at `now` is on or after the cut-off (UTC calendar day). */
+export function homeCutoffPassed(now: Date | string = new Date(), cutoff: string = HOME_CUTOFF): boolean {
+  const t = typeof now === 'string' ? Date.parse(now) : now.getTime()
+  return Number.isFinite(t) && t >= Date.parse(`${cutoff}T00:00:00Z`)
 }

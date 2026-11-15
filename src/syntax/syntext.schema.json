@@ -354,6 +354,13 @@
                 "collapsible",
                 "open"
               ]
+            },
+            "headerBackground": {
+              "type": "string",
+              "enum": [
+                "solid",
+                "transparent"
+              ]
             }
           },
           "additionalProperties": false
@@ -436,6 +443,16 @@
                 "split",
                 "grid",
                 "stacked"
+              ]
+            },
+            "codeRadius": {
+              "type": "string",
+              "enum": [
+                "site",
+                "none",
+                "small",
+                "medium",
+                "large"
               ]
             }
           },

@@ -19,6 +19,13 @@ export const LAYOUT_SWITCHES = {
   nav: ['tree', 'pills', 'mono', 'chevrons', 'plain', 'dock', 'chapters', 'overlay', 'sections'],
   toc: ['progress', 'pills', 'dots', 'rule', 'plain', 'float', 'ruler', 'ticks'],
   groups: ['collapsible', 'open'],
+  /**
+   * What sits behind the sticky header on a live page: `solid` keeps the
+   * header's band; `transparent` lets the content scroll behind it (a floating
+   * island keeps its own surface, a full-width bar turns translucent).
+   * Default: `transparent` for the `island` header, `solid` for every other.
+   */
+  headerBackground: ['solid', 'transparent'],
 } as const
 
 export const COMPONENT_SWITCHES = {
@@ -28,6 +35,12 @@ export const COMPONENT_SWITCHES = {
   cards: ['bordered', 'tile', 'outline', 'accent', 'plain', 'bento', 'cell', 'rows'],
   tabs: ['underline', 'pill', 'mono', 'boxed', 'text', 'segment', 'cells'],
   api: ['spec', 'card', 'term', 'boxed', 'plain', 'split', 'grid', 'stacked'],
+  /**
+   * Corners of code blocks, code tabs, request/response panels and the
+   * copy/ask buttons. `site` (default) keeps each code design's own corners,
+   * which follow `radius` and the preset.
+   */
+  codeRadius: ['site', 'none', 'small', 'medium', 'large'],
 } as const
 
 export type LayoutKey = keyof typeof LAYOUT_SWITCHES

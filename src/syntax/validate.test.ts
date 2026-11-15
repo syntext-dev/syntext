@@ -72,3 +72,20 @@ describe('keysAt', () => {
     expect(keysAt(['nope', 'deeper'])).toEqual([])
   })
 })
+
+describe('validateSiteConfig — appearance.layout.headerBackground and components.codeRadius', () => {
+  it('should accept every value of the two settings', () => {
+    for (const headerBackground of ['solid', 'transparent']) {
+      expect(validateSiteConfig({ name: 'Docs', theme: 'orbit', appearance: { layout: { headerBackground } } }).filter((i) => i.path.includes('headerBackground'))).toEqual([])
+    }
+    for (const codeRadius of ['site', 'none', 'small', 'medium', 'large']) {
+      expect(validateSiteConfig({ name: 'Docs', theme: 'grid', appearance: { components: { codeRadius } } }).filter((i) => i.path.includes('codeRadius'))).toEqual([])
+    }
+  })
+
+  it('should reject a value that is not one of them', () => {
+    const issues = validateSiteConfig({ name: 'Docs', appearance: { layout: { headerBackground: 'clear' }, components: { codeRadius: 'round' } } })
+    expect(issues.some((i) => i.path.includes('headerBackground'))).toBe(true)
+    expect(issues.some((i) => i.path.includes('codeRadius'))).toBe(true)
+  })
+})
