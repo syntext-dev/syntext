@@ -13,7 +13,7 @@ export const deployCommand = new Command('deploy')
   .description('Deploy documentation to Syntext (server-side compilation)')
   .option('-d, --dir <dir>', 'Documentation directory', '.')
   .option('--preview', 'Deploy as a preview (non-production)')
-  .option('--branch <branch>', 'Branch name for preview deploys')
+  .option('--branch <branch>', 'Branch name for a preview deploy (requires --preview)')
   .option('--token <token>', 'Login token or project API key (for CI, overrides stx login)')
   .option('--json', 'Output result as JSON')
   .option('--promote [buildId]', 'Promote a preview deployment to production')
@@ -26,6 +26,11 @@ export const deployCommand = new Command('deploy')
       // Check if config file exists before loading
       if (!(await configFileExists(rootDir))) {
         throw new Error('No syntext.json found in this directory. Run `stx init` to create a new documentation project.')
+      }
+
+      // --branch names a preview; without --preview the deploy would go live and the branch would be ignored.
+      if (options.branch && !options.preview && options.promote === undefined) {
+        throw new Error(`--branch only applies to preview deploys. Add --preview to deploy "${options.branch}" as a preview, or drop --branch to deploy to production.`)
       }
 
       const config = await loadConfig(rootDir)
