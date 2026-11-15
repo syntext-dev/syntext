@@ -8,6 +8,7 @@ import type { SyntextConfig } from '../lib/config'
 import { loadCredentials } from '../lib/credentials'
 import { apiFetch, jsonError } from '../lib/api'
 import { resolveDocsRoot } from '../lib/resolve-docs-root'
+import { collectRootCustomCodeFiles } from '../lib/repo-custom-code'
 import { waitForBuild, type QueuedBehind } from '../lib/build-wait'
 
 /**
@@ -212,6 +213,9 @@ export const deployCommand = new Command('deploy')
       } catch {
         // public/ dir doesn't exist — that's fine
       }
+
+      // Root _syntext/ (repo custom code). docs/_syntext/ ships with docs/ above.
+      sourceFiles.push(...await collectRootCustomCodeFiles(rootDir))
 
       // Include OpenAPI specs.
       //

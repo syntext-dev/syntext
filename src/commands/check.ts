@@ -10,6 +10,8 @@ import type { DriftConfig, DriftIssue } from '../annotations/drift'
 import { loadStyleGuide, validateStyleGuide } from '../annotations/style-guide'
 import { checkProjectSyntax } from '../syntax/check-syntax'
 import { runExplain } from './check-explain'
+import { checkCustomCodeFolder, checkPageCss } from './check-custom-code'
+import { isInCustomCodeDir } from '../lib/repo-custom-code'
 
 /**
  * Remove fenced code blocks and inline code spans so their contents
@@ -56,7 +58,7 @@ export function findBrokenLinks(content: string, files: string[]): string[] {
 }
 
 export const checkCommand = new Command('check')
-  .description('Validate docs and syntext.json: deprecated syntax (including the generated docs home on doc engine v2), unknown keys (with "did you mean"), broken links and annotation drift')
+  .description('Validate docs and syntext.json: deprecated syntax (including the generated docs home on doc engine v2), unknown keys (with "did you mean"), broken links, repo custom code (_syntext/ and the page css key) and annotation drift')
   .option('-d, --dir <dir>', 'Project folder that holds syntext.json', '.')
   .option('-s, --src <paths...>', 'Source directories to scan for @stx annotations', ['src'])
   .option('--json', 'Output result as JSON')
@@ -71,6 +73,14 @@ export const checkCommand = new Command('check')
 Deprecated config keys, frontmatter keys and MDX tags and props are warnings
 with the file, the line and the replacement; \`stx migrate\` rewrites them.
 Unknown keys and values are warnings with the closest valid name.
+
+Repo custom code in _syntext/ (docs/_syntext/, or _syntext/ at the project
+root) is checked against the build's limits: all *.css together at most 50KB,
+at most 10 *.js files of 10KB each, head.html at most 10KB, and no closing
+</style>, </script>, </head> or </body> tags. A page's \`css\` frontmatter must
+name a .css file inside the docs folder. Scripts (*.js, head.html) get a
+warning: they run on the live site only when an admin turns on "Allow scripts
+from the repository" (Integrations › Custom scripts), never in previews.
 
 Examples:
   $ stx check                        Check the project in this folder
@@ -93,7 +103,8 @@ Examples:
       const files: string[] = []
       try {
         for await (const file of mdxGlob.scan({ cwd: docsDir })) {
-          files.push(file)
+          // _syntext/ holds site-wide custom code and is never a page.
+          if (!isInCustomCodeDir(file)) files.push(file)
         }
       } catch {
         // No docs directory — skip MDX checks
@@ -118,7 +129,12 @@ Examples:
         for (const href of findBrokenLinks(content, files)) {
           issues.push({ file, type: 'error', message: 'Broken link: ' + href })
         }
+
+        issues.push(...checkPageCss(content, file, docsDir, relative(rootDir, filePath)))
       }
+
+      // --- Repo custom code: _syntext/ (CSS, scripts, head.html) ---
+      issues.push(...await checkCustomCodeFolder(rootDir))
 
       // --- Syntax: deprecated forms, unknown keys, invalid values (doc engine v2) ---
       spinner && (spinner.text = 'Checking syntax...')

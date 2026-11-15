@@ -126,7 +126,7 @@ export async function checkProjectSyntax(rootDir: string): Promise<{ configFile:
   const docsDir = join(docsRoot, 'docs')
   if (existsSync(docsDir)) {
     const files: string[] = []
-    for await (const f of new Bun.Glob('**/*.{md,mdx}').scan({ cwd: docsDir })) if (!f.split('/').includes('node_modules')) files.push(f)
+    for await (const f of new Bun.Glob('**/*.{md,mdx}').scan({ cwd: docsDir })) if (!f.split('/').includes('node_modules') && f.split('/')[0] !== '_syntext') files.push(f)
     for (const f of files.sort()) pages.push({ file: rel(join(docsDir, f)), docsFile: f, source: await readFile(join(docsDir, f), 'utf-8') })
   }
   const { issues } = checkSyntax({

@@ -27,7 +27,7 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKeySpec[] = [
   // Core
   { key: 'title', type: 'string', required: true, description: 'Page title: browser tab, sidebar, SEO, and the h1 when the body has none.', note: 'Falls back to the file name when absent.' },
   { key: 'description', type: 'string', description: 'Meta description; also shown as a lead paragraph under a synthesised h1.' },
-  { key: 'icon', type: 'icon', description: 'Icon beside the page in the sidebar. Unknown names show no icon.' },
+  { key: 'icon', type: 'icon', description: 'Icon beside the page in the sidebar. Doc engine v2 draws it in the `sections` nav (Orbit), where an unknown name shows the page icon; v1 shows no icon for unknown names.' },
 
   // Navigation
   { key: 'section', type: 'string', description: 'The section, and so the header tab, the page belongs to. Use a tab name verbatim.' },
@@ -66,6 +66,8 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKeySpec[] = [
     note: 'Guide pages only. Also accepts an object { light, dark }, which is not documented.',
   },
   { key: 'backgroundImage', type: 'href', description: 'Background image URL for the page.', note: 'Guide pages only. backgroundSize and backgroundPosition are documented but not read.' },
+  // Styling
+  { key: 'css', type: 'string', description: 'A stylesheet for this page only, added after the site CSS: a path relative to the page (./pricing.css) or from the docs root (/styles/pricing.css). The file must be a .css file inside the docs folder, at most 50KB.', note: 'CSS only: URLs, paths outside the docs folder and other file types fail the build. Site-wide CSS and scripts go in the _syntext/ folder.' },
 
   // SEO
   { key: 'ogImage', type: 'href', description: 'Open Graph image; absolute or site-relative. Overrides the site-wide image.' },

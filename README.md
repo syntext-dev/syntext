@@ -32,10 +32,10 @@ bun test    # run tests
 | Command | Description |
 |---------|-------------|
 | `stx init` | Scaffold a new docs project (`syntext.json` starts with the `$schema` line); `--preset <name>` starts on doc engine v2 with a home page built from the home components |
-| `stx dev` | Watch for changes and auto-deploy previews |
+| `stx dev` | Watch `docs/`, `public/`, `_syntext/` and the config, and auto-deploy previews (repo CSS applies in previews; repo scripts never run there) |
 | `stx build` | Build on the Syntext backend and download the static site (for self-hosting) |
 | `stx deploy` | Push to Syntext hosting |
-| `stx check` | Validate `syntext.json`, frontmatter, MDX tags and props, links and annotations; `--explain appearance` shows where each look value comes from |
+| `stx check` | Validate `syntext.json`, frontmatter, MDX tags and props, links, repo custom code (`_syntext/`, page `css`) and annotations; `--explain appearance` shows where each look value comes from |
 | `stx generate` | Generate API reference pages from `@stx` source annotations |
 | `stx migrate` | Rewrite deprecated Syntext syntax in place; `--from` imports from Mintlify, ReadMe, Docusaurus or GitBook |
 | `stx login` | Authenticate via browser (device flow); stops if denied in the browser |
@@ -112,6 +112,57 @@ words. v1 sites get none of these.
 ```
 ⚠ docs/index.mdx:1: This index page shows the generated docs home, which stops on 1 December 2026: …
 ```
+
+### Repo custom code (`_syntext/`)
+
+Site-wide custom code ships from the docs repo in a `_syntext/` folder. The
+hosted build renders it; the CLI uploads and validates it.
+
+- **Where:** `docs/_syntext/`, or `_syntext/` at the project root. Without a
+  `docs/` folder, the project root's `_syntext/` is the folder. If both
+  `docs/_syntext/` and `_syntext/` exist, `docs/_syntext/` wins and `stx check`
+  warns that the root one is ignored. Only top-level files count.
+- **What:** every `*.css` (joined in file-name order) is one site-wide
+  stylesheet; every `*.js` (file-name order) is a script at the end of
+  `<body>`; `head.html` goes into `<head>`. Other files are ignored, and
+  nothing in `_syntext/` is ever a page (`stx check` skips it for links and
+  syntax).
+- **Limits:** all CSS together at most 50KB; at most 10 `.js` files of at most
+  10KB each; `head.html` at most 10KB. CSS must not contain `</style>`,
+  scripts must not contain `</script>`, and none may contain `</head>` or
+  `</body>`.
+- **Scripts need permission:** CSS always applies. `*.js` and `head.html` run
+  on the live site only when an organization or project admin turns on
+  **Allow scripts from the repository** in the dashboard (Integrations ›
+  Custom scripts; off by default), and never on preview builds (`stx dev`,
+  PR previews), even when allowed.
+
+A page can add its own stylesheet with the `css` frontmatter key: a path to a
+`.css` file inside the docs folder, relative to the page (`./pricing.css`,
+`../shared/pricing.css`) or from the docs root (`/styles/pricing.css`). It is
+added after the site CSS. URLs, backslashes, other file types, paths outside
+the docs folder, missing files, files over 50KB and the forbidden tags above
+are errors. CSS only: there are no per-page scripts.
+
+`stx dev`, `stx build` and `stx deploy` upload `docs/**` (with
+`docs/_syntext/` and page stylesheets) and the root `_syntext/` files. `stx
+dev` also watches `_syntext/` and prints a note when the project has scripts,
+since previews do not run them.
+
+`stx check` reports, for example:
+
+```
+✗ docs/_syntext/theme.css: CSS must not contain </style>
+✗ docs/_syntext/*.css: combined CSS is 61.2KB; the limit is 50KB
+✗ docs/_syntext/app.js: script is 12.3KB; the limit is 10KB
+✗ docs/pricing.mdx: css "https://cdn.example.com/x.css" must be a path to a .css file in the docs folder, not a URL
+✗ docs/pricing.mdx: css "./pricing.css": file not found (pricing.css in the docs folder)
+⚠ docs/_syntext/: app.js, head.html run on the live site only when an organization or project admin turns on "Allow scripts from the repository" (dashboard: Integrations › Custom scripts), and never on preview builds (stx dev, PR previews). CSS always applies.
+⚠ _syntext/: ignored: docs/_syntext/ exists and takes precedence. Move these files into docs/_syntext/.
+```
+
+Errors fail `stx check` (exit 1); in `--json` each is an issue with `file`,
+`type` and `message`.
 
 ### `stx check --explain appearance`
 
@@ -190,6 +241,7 @@ src/
 │   ├── deploy.ts
 │   ├── check.ts
 │   ├── check-explain.ts  # stx check --explain appearance
+│   ├── check-custom-code.ts # stx check: _syntext/ and page css
 │   ├── generate.ts
 │   ├── migrate.ts
 │   ├── migrate-syntax.ts # stx migrate without --from
@@ -225,6 +277,8 @@ src/
     ├── device-poll.ts    # `stx login` device-token polling
     ├── dashboard-urls.ts # Links into the dashboard (billing, API keys)
     ├── ci-templates.ts   # CI/CD scaffold generators
+    ├── repo-custom-code.ts # _syntext/: find, validate, upload
+    ├── page-css.ts       # The page `css` frontmatter key
     └── resolve-docs-root.ts
 
 ## Annotation language support
