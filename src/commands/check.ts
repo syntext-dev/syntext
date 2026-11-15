@@ -10,7 +10,7 @@ import type { DriftConfig, DriftIssue } from '../annotations/drift'
 import { loadStyleGuide, validateStyleGuide } from '../annotations/style-guide'
 import { checkProjectSyntax } from '../syntax/check-syntax'
 import { runExplain } from './check-explain'
-import { checkCustomCodeFolder, checkPageCss } from './check-custom-code'
+import { checkCustomCodeFolder, checkPageCss, type PageCss } from './check-custom-code'
 import { isInCustomCodeDir } from '../lib/repo-custom-code'
 
 /**
@@ -58,7 +58,7 @@ export function findBrokenLinks(content: string, files: string[]): string[] {
 }
 
 export const checkCommand = new Command('check')
-  .description('Validate docs and syntext.json: deprecated syntax (including the generated docs home on doc engine v2), unknown keys (with "did you mean"), broken links, repo custom code (_syntext/ and the page css key) and annotation drift')
+  .description('Validate docs and syntext.json: deprecated syntax (including the generated docs home on doc engine v2), unknown keys (with "did you mean"), broken links, custom code from your docs (_syntext/ and the page css key) and annotation drift')
   .option('-d, --dir <dir>', 'Project folder that holds syntext.json', '.')
   .option('-s, --src <paths...>', 'Source directories to scan for @stx annotations', ['src'])
   .option('--json', 'Output result as JSON')
@@ -74,13 +74,18 @@ Deprecated config keys, frontmatter keys and MDX tags and props are warnings
 with the file, the line and the replacement; \`stx migrate\` rewrites them.
 Unknown keys and values are warnings with the closest valid name.
 
-Repo custom code in _syntext/ (docs/_syntext/, or _syntext/ at the project
-root) is checked against the build's limits: all *.css together at most 50KB,
-at most 10 *.js files of 10KB each, head.html at most 10KB, and no closing
-</style>, </script>, </head> or </body> tags. A page's \`css\` frontmatter must
-name a .css file inside the docs folder. Scripts (*.js, head.html) get a
-warning: they run on the live site only when an admin turns on "Allow scripts
-from the repository" (Integrations › Custom scripts), never in previews.
+Custom code from your docs in _syntext/ (docs/_syntext/, or _syntext/ at the
+project root) is checked with the build's rules: all *.css together at most
+50KB, at most 10 *.js files of 10KB each, head.html at most 10KB and only
+<meta>, <link>, <script>, <noscript> and <style>; CSS may load only https://,
+relative and data: image/font URLs. A page's \`css\` frontmatter must name a
+.css file inside the docs folder. Errors fail the check.
+
+Three switches in the dashboard (Integrations › Custom code) decide what the
+live site applies: "CSS from your docs" (on by default), "Head tags from your
+docs" and "Scripts from your docs" (off by default). head.html and *.js never
+run on previews. For a linked project (projectId and \`stx login\`) the
+warnings name the files a switch that is off skips.
 
 Examples:
   $ stx check                        Check the project in this folder
@@ -110,6 +115,7 @@ Examples:
         // No docs directory — skip MDX checks
       }
 
+      const pageCss: PageCss[] = []
       for (const file of files) {
         const filePath = join(docsDir, file)
         const content = await readFile(filePath, 'utf-8')
@@ -130,11 +136,13 @@ Examples:
           issues.push({ file, type: 'error', message: 'Broken link: ' + href })
         }
 
-        issues.push(...checkPageCss(content, file, docsDir, relative(rootDir, filePath)))
+        const css = checkPageCss(content, file, docsDir, relative(rootDir, filePath))
+        issues.push(...css.issues)
+        if (css.css) pageCss.push(css.css)
       }
 
-      // --- Repo custom code: _syntext/ (CSS, scripts, head.html) ---
-      issues.push(...await checkCustomCodeFolder(rootDir))
+      // --- Custom code from your docs: _syntext/ (CSS, head.html, scripts) and the switches ---
+      issues.push(...await checkCustomCodeFolder(rootDir, pageCss))
 
       // --- Syntax: deprecated forms, unknown keys, invalid values (doc engine v2) ---
       spinner && (spinner.text = 'Checking syntax...')

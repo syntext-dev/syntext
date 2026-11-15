@@ -111,3 +111,25 @@ describe('validatePageCss', () => {
     expect(validatePageCss(page('""'), 'a.mdx', docs)).toBe('css "" must not be empty')
   })
 })
+
+describe('validatePageCss content rules', () => {
+  let docs: string
+
+  beforeEach(async () => {
+    docs = await mkdtemp(join(tmpdir(), 'stx-page-css-rules-'))
+  })
+
+  afterEach(async () => {
+    await rm(docs, { recursive: true, force: true })
+  })
+
+  it('should apply the CSS rules to the page stylesheet', async () => {
+    await writeFile(join(docs, 'a.css'), 'a{background:url(http://x/a.png)}')
+    expect(validatePageCss('---\ncss: ./a.css\n---\n', 'p.mdx', docs)).toBe('css "./a.css": CSS may load only https:// URLs (found "http://x/a.png")')
+  })
+
+  it('should refuse a stylesheet that is not text', async () => {
+    await writeFile(join(docs, 'a.css'), new Uint8Array([0x61, 0x00]))
+    expect(validatePageCss('---\ncss: ./a.css\n---\n', 'p.mdx', docs)).toBe('css "./a.css": a.css is not a text file')
+  })
+})

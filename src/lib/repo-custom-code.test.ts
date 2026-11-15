@@ -12,6 +12,7 @@ import {
   locateCustomCode,
   readCustomCodeFiles,
   validateCustomCode,
+  type CustomCodeFile,
   type CustomCodeFiles,
 } from './repo-custom-code'
 
@@ -32,7 +33,12 @@ async function put(rel: string, content = ''): Promise<void> {
 }
 
 const files = (over: Partial<CustomCodeFiles> = {}): CustomCodeFiles => ({ css: [], js: [], head: null, ...over })
-const messages = (r: { errors: Array<{ file: string; message: string }> }) => r.errors.map(formatCustomCodeIssue)
+const f = (name: string, content: string): CustomCodeFile => ({ name, content, bytes: Buffer.byteLength(content) })
+const messages = (errors: Array<{ file: string; message: string }>) => errors.map(formatCustomCodeIssue)
+async function mkdirp(rel: string): Promise<string> {
+  await mkdir(join(root, rel), { recursive: true })
+  return join(root, rel)
+}
 
 describe('isInCustomCodeDir', () => {
   it('should be true for files under _syntext/', () => {
@@ -100,90 +106,88 @@ describe('readCustomCodeFiles', () => {
     await put('_syntext/head.html', '<meta name="x">')
     const r = await readCustomCodeFiles(join(root, '_syntext'))
     expect(r.css.map((f) => f.name)).toEqual(['a.css', 'z.css'])
-    expect(r.js).toEqual([{ name: 'app.js', content: 'run()' }])
-    expect(r.head).toEqual({ name: 'head.html', content: '<meta name="x">' })
+    expect(r.js).toEqual([{ name: 'app.js', bytes: 5, content: 'run()' }])
+    expect(r.head).toEqual({ name: 'head.html', bytes: 15, content: '<meta name="x">' })
   })
 })
 
 describe('validateCustomCode', () => {
-  it('should pass valid CSS with no warnings', () => {
-    expect(validateCustomCode(files({ css: [{ name: 'theme.css', content: 'body{color:red}' }] }))).toEqual({ errors: [], warnings: [] })
+  it('should pass valid CSS', () => {
+    expect(validateCustomCode(files({ css: [f('theme.css', 'body{color:red}')] }))).toEqual([])
   })
 
-  it('should reject </style> and </head> in CSS, naming the file', () => {
-    const r = validateCustomCode(files({ css: [{ name: 'theme.css', content: 'a{} </ STYLE> </body >' }] }))
-    expect(messages(r)).toEqual([
-      '_syntext/theme.css: CSS must not contain </head> or </body>',
+  it('should apply the CSS rules, naming the file', () => {
+    expect(messages(validateCustomCode(files({ css: [f('theme.css', 'a{} </ STYLE> a{background:url(http://x/a.png)}')] })))).toEqual([
       '_syntext/theme.css: CSS must not contain </style>',
+      '_syntext/theme.css: CSS may load only https:// URLs (found "http://x/a.png")',
+    ])
+  })
+
+  it('should refuse a file that is not text', () => {
+    const bin: CustomCodeFile = { name: 'logo.css', bytes: 3, content: null }
+    expect(messages(validateCustomCode(files({ css: [bin], js: [{ ...bin, name: 'a.js' }], head: { ...bin, name: 'head.html' } })))).toEqual([
+      '_syntext/logo.css: is not a text file',
+      '_syntext/a.js: is not a text file',
+      '_syntext/head.html: is not a text file',
     ])
   })
 
   it('should reject combined CSS over 50KB and accept exactly 50KB', () => {
     const half = 'a'.repeat(25600)
-    expect(validateCustomCode(files({ css: [{ name: 'a.css', content: half }, { name: 'b.css', content: half }] })).errors).toEqual([])
-    const r = validateCustomCode(files({ css: [{ name: 'a.css', content: half }, { name: 'b.css', content: half + 'x'.repeat(11059) }] }))
-    expect(messages(r)).toEqual(['_syntext/*.css: combined CSS is 60.8KB; the limit is 50KB'])
+    expect(validateCustomCode(files({ css: [f('a.css', half), f('b.css', half)] }))).toEqual([])
+    expect(messages(validateCustomCode(files({ css: [f('a.css', half), f('b.css', half + 'x'.repeat(11059))] })))).toEqual(['_syntext/*.css: combined CSS is 60.8KB; the limit is 50KB'])
   })
 
   it('should count UTF-8 bytes, not characters', () => {
-    const r = validateCustomCode(files({ css: [{ name: 'a.css', content: '€'.repeat(17067) }] }))
-    expect(r.errors).toHaveLength(1)
+    expect(validateCustomCode(files({ css: [f('a.css', '€'.repeat(17067))] }))).toHaveLength(1)
   })
 
   it('should reject a script over 10KB and </script> or </body> in a script', () => {
-    const r = validateCustomCode(files({
-      js: [
-        { name: 'big.js', content: 'x'.repeat(10241) },
-        { name: 'bad.js', content: 'document.write("</script>"); "</body>"' },
-        { name: 'ok.js', content: 'x'.repeat(10240) },
-      ],
-    }))
-    expect(messages(r)).toEqual([
+    expect(messages(validateCustomCode(files({ js: [f('big.js', 'x'.repeat(10241)), f('bad.js', 'document.write("</script>"); "</body>"'), f('ok.js', 'x'.repeat(10240))] })))).toEqual([
       '_syntext/big.js: script is 10.0KB; the limit is 10KB',
-      '_syntext/bad.js: JavaScript must not contain </head> or </body>',
       '_syntext/bad.js: JavaScript must not contain </script>',
+      '_syntext/bad.js: JavaScript must not contain </head> or </body>',
     ])
   })
 
   it('should reject more than 10 scripts', () => {
-    const js = Array.from({ length: 11 }, (_, i) => ({ name: `s${i}.js`, content: '' }))
+    const js = Array.from({ length: 11 }, (_, i) => f(`s${i}.js`, ''))
     expect(messages(validateCustomCode(files({ js })))).toEqual(['_syntext/*.js: 11 scripts; the limit is 10'])
-    expect(validateCustomCode(files({ js: js.slice(0, 10) })).errors).toEqual([])
+    expect(validateCustomCode(files({ js: js.slice(0, 10) }))).toEqual([])
   })
 
-  it('should reject head.html over 10KB or with </head>', () => {
-    const r = validateCustomCode(files({ head: { name: 'head.html', content: '</head>' + 'x'.repeat(10240) } }))
-    expect(messages(r)).toEqual([
+  it('should reject head.html over 10KB and apply the head.html rules', () => {
+    expect(messages(validateCustomCode(files({ head: f('head.html', '<base href="/">' + ' '.repeat(10240)) })))).toEqual([
       '_syntext/head.html: head.html is 10.0KB; the limit is 10KB',
-      '_syntext/head.html: head.html must not contain </head> or </body>',
+      '_syntext/head.html: <base> is not allowed (head.html may contain only <meta>, <link>, <script>, <noscript> and <style>)',
     ])
   })
 
-  it('should allow </script> in head.html', () => {
-    expect(validateCustomCode(files({ head: { name: 'head.html', content: '<script>x()</script>' } })).errors).toEqual([])
-  })
-
-  it('should warn that scripts need permission and never run in previews', () => {
-    const r = validateCustomCode(files({ js: [{ name: 'app.js', content: '' }], head: { name: 'head.html', content: '' } }))
-    expect(r.warnings).toHaveLength(1)
-    expect(r.warnings[0].file).toBe('_syntext/')
-    expect(r.warnings[0].message).toContain('app.js, head.html run on the live site only when')
-    expect(r.warnings[0].message).toContain('"Allow scripts from the repository"')
-    expect(r.warnings[0].message).toContain('Integrations › Custom scripts')
-    expect(r.warnings[0].message).toContain('never on preview builds (stx dev, PR previews)')
+  it('should allow a plain script in head.html', () => {
+    expect(validateCustomCode(files({ head: f('head.html', '<script>x()</script>') }))).toEqual([])
   })
 })
 
 describe('checkCustomCode', () => {
+  const none = { css: [], js: [], head: null }
+
   it('should report nothing without a _syntext folder', async () => {
-    expect(await checkCustomCode(root)).toEqual({ errors: [], warnings: [], hasScripts: false })
+    expect(await checkCustomCode(root)).toEqual({ errors: [], warnings: [], paths: none })
   })
 
   it('should name files from the project root for docs/_syntext', async () => {
     await put('docs/_syntext/theme.css', '</style>')
+    await put('docs/_syntext/app.js', 'x()')
+    await put('docs/_syntext/head.html', '<meta name="a">')
     const r = await checkCustomCode(root)
     expect(r.errors).toEqual([{ file: 'docs/_syntext/theme.css', message: 'CSS must not contain </style>' }])
-    expect(r.hasScripts).toBe(false)
+    expect(r.warnings).toEqual([])
+    expect(r.paths).toEqual({ css: ['docs/_syntext/theme.css'], js: ['docs/_syntext/app.js'], head: 'docs/_syntext/head.html' })
+  })
+
+  it('should refuse a binary file read from disk', async () => {
+    await writeFile(join(await mkdirp('_syntext'), 'x.js'), new Uint8Array([0xff, 0x00, 0x01]))
+    expect((await checkCustomCode(root)).errors).toEqual([{ file: '_syntext/x.js', message: 'is not a text file' }])
   })
 
   it('should warn about an ignored root folder and validate only docs/_syntext', async () => {
@@ -192,13 +196,7 @@ describe('checkCustomCode', () => {
     const r = await checkCustomCode(root)
     expect(r.errors).toEqual([])
     expect(r.warnings).toEqual([{ file: '_syntext/', message: 'ignored: docs/_syntext/ exists and takes precedence. Move these files into docs/_syntext/.' }])
-  })
-
-  it('should flag scripts in a root folder', async () => {
-    await put('_syntext/app.js', 'x()')
-    const r = await checkCustomCode(root)
-    expect(r.hasScripts).toBe(true)
-    expect(r.warnings[0].file).toBe('_syntext/')
+    expect(r.paths.css).toEqual(['docs/_syntext/theme.css'])
   })
 })
 
