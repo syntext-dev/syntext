@@ -1,6 +1,6 @@
 {
   "name": "@syntext/cli",
-  "version": "0.11.4",
+  "version": "0.11.5",
   "private": true,
   "bin": {
     "stx": "./dist/index.js"
