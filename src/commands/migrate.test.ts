@@ -265,6 +265,14 @@ Some documentation content.
       expect(migrateCommand.options.find((o) => o.long === '--from')?.mandatory).toBe(false)
     })
 
+    it('should say in --help that the generated home stopped on 16 November 2026', async () => {
+      const proc = Bun.spawn(['bun', 'run', join(import.meta.dir, '../index.ts'), 'migrate', '--help'], { stdout: 'pipe', stderr: 'pipe' })
+      const out = await new Response(proc.stdout).text()
+      await proc.exited
+      expect(out).toContain('The generated docs home (doc engine v2) stopped on 16 November 2026.')
+      expect(out).not.toContain('stops on')
+    })
+
     it('should rewrite deprecated syntax when run without --from', async () => {
       const dir = await createTempDir()
       await mkdir(join(dir, 'docs'), { recursive: true })

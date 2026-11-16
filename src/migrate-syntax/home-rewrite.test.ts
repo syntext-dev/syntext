@@ -51,7 +51,7 @@ describe('localHomeSite', () => {
     })
   })
 
-  it('should follow appearance.layout.home and default what is missing', () => {
+  it('should follow appearance.layout.home and default what is missing, even though the resolver ignores it after the cut-off', () => {
     const s = localHomeSite(ctx({ config: { theme: 'paper', appearance: { layout: { home: 'mega' } }, openapi: 'openapi.yaml' } }))
     expect(s).toMatchObject({ layout: 'mega', siteName: 'Docs', assistant: true, has: { changelog: false, api: true, cli: false } })
     expect(localHomeSite(ctx({ config: null })).layout).toBe('command')
