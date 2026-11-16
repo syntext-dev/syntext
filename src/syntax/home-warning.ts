@@ -8,14 +8,27 @@
 
 // The cut-off date lives in home-cutoff.ts (a copy of the backend's
 // modules/deprecations/home-cutoff.ts); re-exported here for existing callers.
-import { homeCutoffLabel } from './home-cutoff'
+import { homeCutoffLabel, homeCutoffPassed } from './home-cutoff'
 export { HOME_CUTOFF, homeCutoffLabel } from './home-cutoff'
 
 const HOW = 'Convert it to components with Appearance › Convert home to content in the dashboard (or `stx migrate`)'
 
-/** The warning for a `frontmatter.home` or `frontmatter.implicit-home` use; undefined for any other code. */
-export function homeDeprecationWarning(code: string): string | undefined {
+/**
+ * The warning for a `frontmatter.home` or `frontmatter.implicit-home` use;
+ * undefined for any other code. Worded for `now` (default: the clock): future
+ * tense before the cut-off, past tense on and after it.
+ */
+export function homeDeprecationWarning(code: string, now?: Date | string): string | undefined {
   const date = homeCutoffLabel()
+  if (homeCutoffPassed(now)) {
+    if (code === 'frontmatter.home') {
+      return `\`home\` frontmatter is deprecated: the generated home stopped on ${date}, and index.mdx now shows only its own content. ${HOW}, which writes the same blocks as MDX components.`
+    }
+    if (code === 'frontmatter.implicit-home') {
+      return `The generated docs home stopped on ${date}: index.mdx now shows only its own content. ${HOW} to bring the preset's home blocks back.`
+    }
+    return undefined
+  }
   if (code === 'frontmatter.home') {
     return `\`home\` frontmatter is deprecated: the generated home it builds stops on ${date}, and index.mdx will then show only its own content. ${HOW}, which writes the same blocks as MDX components.`
   }

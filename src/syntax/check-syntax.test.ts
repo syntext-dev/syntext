@@ -24,17 +24,17 @@ describe('checkSyntax', () => {
     const home = '---\ntitle: Home\nhome:\n  hero:\n    title: Acme docs\n---\n'
     const v2 = config('{ "name": "A", "theme": "paper" }')
 
-    it('should warn about home frontmatter on a v2 index page, in the build\'s words and with the date', () => {
+    it('should warn about home frontmatter on a v2 index page, in the build\'s words and with the date (past tense: the clock is after the cut-off)', () => {
       const r = checkSyntax({ config: v2, pages: [{ file: 'docs/index.mdx', docsFile: 'index.mdx', source: home }] })
       expect(r.issues).toEqual([expect.objectContaining({ file: 'docs/index.mdx', line: 3, type: 'warning', code: 'frontmatter.home' })])
-      expect(r.issues[0]?.message).toContain('stops on 1 December 2026')
+      expect(r.issues[0]?.message).toContain('the generated home stopped on 16 November 2026')
       expect(r.usages[0]).toMatchObject({ file: 'docs/index.mdx', code: 'frontmatter.home' })
     })
 
     it('should warn about the implicit home on a v2 index page with neither home nor home components', () => {
       const r = checkSyntax({ config: v2, pages: [{ file: 'docs/index.mdx', docsFile: 'index.mdx', source: '---\ntitle: Home\n---\nHi\n' }] })
       expect(r.issues).toEqual([expect.objectContaining({ line: 1, code: 'frontmatter.implicit-home' })])
-      expect(r.issues[0]?.message).toContain('add `home: false`')
+      expect(r.issues[0]?.message).toBe('The generated docs home stopped on 16 November 2026: index.mdx now shows only its own content. Convert it to components with Appearance › Convert home to content in the dashboard (or `stx migrate`) to bring the preset\'s home blocks back.')
     })
 
     it('should not warn once the index opts in with home: false or a home component', () => {
@@ -56,7 +56,7 @@ describe('checkSyntax', () => {
 
     it('should report appearance.layout.home once, in the resolver\'s words', () => {
       const r = checkSyntax({ config: config('{\n  "theme": "paper",\n  "appearance": { "layout": { "home": "pill" } }\n}'), pages: [] })
-      expect(r.issues.map((i) => i.message)).toEqual([expect.stringContaining('appearance.layout.home is deprecated and stops working on 1 December 2026')])
+      expect(r.issues.map((i) => i.message)).toEqual(['appearance.layout.home is ignored since 16 November 2026: the home blocks follow the preset. Remove it.'])
       expect(r.usages.map((u) => u.code)).toEqual(['config.layout-home'])
     })
   })

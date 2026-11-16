@@ -2,7 +2,7 @@
  * The `home-to-mdx` rewrite (home-as-content.md): the docs root index page's
  * generated home, written as the home components (`<Hero title>`,
  * `<SectionCards>`, …), with `home` dropped and `layout: wide` set, so the
- * page looks the same after the generated home stops on its cut-off.
+ * page looks the same now the generated home has stopped (its cut-off).
  *
  * The conversion needs the site's data (which home layout the preset draws,
  * whether there is a changelog, an API or a CLI section, the quickstart page).
@@ -16,6 +16,7 @@
  */
 import { parse as parseYaml } from 'yaml'
 import { resolveAppearance } from '../appearance/resolve'
+import { HOME_CUTOFF } from '../syntax/home-cutoff'
 import { apiFetch } from '../lib/api'
 import { frontmatterBlock } from '../syntax/locate'
 import { isRootIndexFile, scanPage } from '../syntax/scan-page'
@@ -69,10 +70,14 @@ export function homeCodeFor(docsFile: string, source: string): HomeCode | null {
 
 const pageHref = (docsFile: string) => `/${docsFile.replace(/\.mdx?$/i, '').replace(/(^|\/)index$/i, '')}`.replace(/\/$/, '') || '/'
 
+/** One millisecond before HOME_CUTOFF: the last build time that drew the generated home. */
+const GENERATED_HOME_LAST_MOMENT = new Date(Date.parse(`${HOME_CUTOFF}T00:00:00Z`) - 1)
+
 /** The site data the build would use, worked out from syntext.json and the page paths. */
 export function localHomeSite(ctx: HomeSiteContext): HomeMigrationSite {
   const config = ctx.config ?? {}
-  const appearance = resolveAppearance(config).appearance as { layout?: { home?: unknown } }
+  // Resolved as of the generated home's last moment, so appearance.layout.home (ignored since the cut-off) still picks the layout the home drew.
+  const appearance = resolveAppearance(config, { now: GENERATED_HOME_LAST_MOMENT }).appearance as { layout?: { home?: unknown } }
   const home = appearance.layout?.home
   const layout = (LAYOUTS as readonly unknown[]).includes(home) ? (home as HomeMigrationLayout) : 'command'
   const features = isObject(config.features) ? config.features : {}
