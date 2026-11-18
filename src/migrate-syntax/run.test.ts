@@ -124,12 +124,19 @@ describe('migrateSyntax', () => {
   describe('generated home (home-to-mdx)', () => {
     const v2 = { 'syntext.json': '{\n  "name": "Acme",\n  "theme": "paper"\n}\n', 'docs/guides/a.mdx': '---\ntitle: A\n---\n' }
 
+    it('should leave a home the author wrote exactly as it is', async () => {
+      const written = '---\ntitle: Welcome\nlayout: "landing"\n---\n\n<Hero variant="card">\n\n# Ours\n\n</Hero>\n'
+      const root = await site({ ...v2, 'docs/index.mdx': written })
+      const r = await migrateSyntax({ rootDir: root, dryRun: false, applyV2: false, items })
+      expect(await read('docs/index.mdx')).toBe(written)
+      expect(r.home).toBeUndefined()
+    })
+
     it('should write the implicit home as components from the local files, and be idempotent', async () => {
-      const root = await site({ ...v2, 'docs/index.mdx': '---\ntitle: Welcome\n---\n\nHello.\n' })
+      const root = await site({ ...v2, 'docs/index.mdx': '---\ntitle: Welcome\n---\n' })
       const r = await migrateSyntax({ rootDir: root, dryRun: false, applyV2: false, items })
       const text = await read('docs/index.mdx')
       expect(text).toStartWith('---\ntitle: Welcome\nlayout: wide\n---\n\n<Hero title="How can we help?"')
-      expect(text).toEndWith('\nHello.\n')
       expect(r.applied).toEqual([expect.objectContaining({ code: 'frontmatter.implicit-home', file: 'docs/index.mdx' })])
       expect(r.home).toEqual({ file: 'docs/index.mdx', from: 'local', reason: expect.stringContaining('not logged in') })
       expect(r.remaining).toEqual([])

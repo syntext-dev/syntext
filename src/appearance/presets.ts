@@ -85,5 +85,13 @@ export const isPresetName = (v: string): v is PresetName => Object.prototype.has
  */
 export const LEGACY_THEMES: Readonly<Record<string, { preset: PresetName; appearance: Record<string, unknown> }>> = {
   default: { preset: 'workbench', appearance: {} },
-  gravv: { preset: 'workbench', appearance: { accent: '#077155', layout: { header: 'tabs' }, components: { code: 'inset' } } },
+  gravv: {
+    preset: 'workbench',
+    appearance: {
+      accent: { light: '#077155', dark: '#15a07b' },
+      fonts: { heading: 'Bricolage Grotesque', body: 'Geist Mono', mono: 'Geist Mono' },
+      layout: { header: 'tabs' },
+      components: { code: 'dark' },
+    },
+  },
 }

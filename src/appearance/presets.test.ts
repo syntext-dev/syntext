@@ -41,6 +41,14 @@ describe('isPresetName', () => {
 describe('LEGACY_THEMES', () => {
   it('should map v1 theme names onto real presets', () => {
     expect(LEGACY_THEMES.default.preset).toBe('workbench')
-    expect(LEGACY_THEMES.gravv).toEqual({ preset: 'workbench', appearance: { accent: '#077155', layout: { header: 'tabs' }, components: { code: 'inset' } } })
+    expect(LEGACY_THEMES.gravv).toEqual({
+      preset: 'workbench',
+      appearance: {
+        accent: { light: '#077155', dark: '#15a07b' },
+        fonts: { heading: 'Bricolage Grotesque', body: 'Geist Mono', mono: 'Geist Mono' },
+        layout: { header: 'tabs' },
+        components: { code: 'dark' },
+      },
+    })
   })
 })

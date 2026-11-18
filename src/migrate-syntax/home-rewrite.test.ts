@@ -19,7 +19,8 @@ function json(status: number, body: unknown): Response {
 
 describe('homeCodeFor', () => {
   it('should name the implicit home and the home frontmatter on the root index only', () => {
-    expect(homeCodeFor('index.mdx', '---\ntitle: A\n---\nHi')).toBe('frontmatter.implicit-home')
+    expect(homeCodeFor('index.mdx', '---\ntitle: A\n---\n')).toBe('frontmatter.implicit-home')
+    expect(homeCodeFor('index.mdx', '---\ntitle: A\n---\nHi')).toBeNull()
     expect(homeCodeFor('index.md', '---\nhome:\n  hero:\n    title: A\n---\n')).toBe('frontmatter.home')
     expect(homeCodeFor('guides/index.mdx', 'Hi')).toBeNull()
   })
@@ -141,7 +142,7 @@ describe('rewriteHome', () => {
   const base = { file: 'docs/index.mdx', docsFile: 'index.mdx', items, siteIsV2: true, ctx: { config: {}, docsFiles: ['index.mdx'] }, provider }
 
   it('should convert the implicit home and say where the site data came from', async () => {
-    const r = await rewriteHome({ ...base, source: '---\ntitle: Home\n---\nHi\n' })
+    const r = await rewriteHome({ ...base, source: '---\ntitle: Home\n---\n' })
     expect(r.text).toContain('<Hero title="Acme"')
     expect(r.text).toContain('layout: wide')
     expect(r.from).toBe('local')

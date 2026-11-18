@@ -25,7 +25,7 @@ describe('resolveAppearance', () => {
     const g = resolveAppearance({ theme: 'gravv' })
     expect(g.appearance.preset).toBe('workbench')
     expect(g.appearance.layout.header).toBe('tabs')
-    expect(g.appearance.components.code).toBe('inset')
+    expect(g.appearance.components.code).toBe('dark')
     expect(g.sources['layout.header']).toBe('legacy-theme')
     expect(g.issues).toEqual([])
   })
