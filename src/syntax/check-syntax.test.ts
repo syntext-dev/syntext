@@ -32,7 +32,7 @@ describe('checkSyntax', () => {
     })
 
     it('should warn about the implicit home on a v2 index page with neither home nor home components', () => {
-      const r = checkSyntax({ config: v2, pages: [{ file: 'docs/index.mdx', docsFile: 'index.mdx', source: '---\ntitle: Home\n---\nHi\n' }] })
+      const r = checkSyntax({ config: v2, pages: [{ file: 'docs/index.mdx', docsFile: 'index.mdx', source: '---\ntitle: Home\n---\n' }] })
       expect(r.issues).toEqual([expect.objectContaining({ line: 1, code: 'frontmatter.implicit-home' })])
       expect(r.issues[0]?.message).toBe('The generated docs home stopped on 16 November 2026: index.mdx now shows only its own content. Convert it to components with Appearance › Convert home to content in the dashboard (or `stx migrate`) to bring the preset\'s home blocks back.')
     })
@@ -213,7 +213,7 @@ describe('checkProjectSyntax', () => {
     dir = await mkdtemp(join(tmpdir(), 'stx-proj-'))
     await mkdir(join(dir, 'docs/guides'), { recursive: true })
     await writeFile(join(dir, 'syntext.json'), '{ "name": "A", "theme": "paper" }\n')
-    await writeFile(join(dir, 'docs/index.mdx'), '---\ntitle: Home\n---\nHi\n')
+    await writeFile(join(dir, 'docs/index.mdx'), '---\ntitle: Home\n---\n')
     await writeFile(join(dir, 'docs/guides/index.mdx'), '---\ntitle: Guides\n---\nHi\n')
     const r = await checkProjectSyntax(dir)
     expect(r.issues.map((i) => `${i.file}:${i.line} ${i.code}`)).toEqual(['docs/index.mdx:1 frontmatter.implicit-home'])

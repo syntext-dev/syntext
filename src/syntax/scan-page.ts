@@ -75,10 +75,20 @@ export const isRootIndexFile = (file: string) => /^(?:\.\/)?index\.mdx?$/i.test(
 
 const HOME_TAGS = /<(?:SectionCards|QuickStart|ApiGroups|SdkList|CommandList|PopularPages|LatestUpdates|SupportCard)[\s>/]|<Hero\s[^>]*\btitle\s*=|<SearchBar\s[^>]*\bsize\s*=\s*["']?(?:lg|large)\b/
 
+/** Whether the page has anything of its own below the frontmatter, besides comments and a leading title. */
+function hasOwnContent(source: string): boolean {
+  return source
+    .replace(/^\uFEFF?---\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?:\r?\n|$)/, '')
+    .replace(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/g, '')
+    .trim()
+    .replace(/^#[ \t]+[^\n]*/, '')
+    .trim().length > 0
+}
+
 /**
  * The generated docs home (home-as-content.md): an index page with `home`
- * frontmatter, or with none and no home components (the implicit home).
- * `home: false` and a body with home components have opted in.
+ * frontmatter, or an empty one (the implicit home). `home: false`, a body with
+ * home components and a body the author wrote are the page itself.
  */
 function scanHome(file: string, source: string, out: DeprecationUsage[]): void {
   if (!isRootIndexFile(file)) return
@@ -97,7 +107,7 @@ function scanHome(file: string, source: string, out: DeprecationUsage[]): void {
     const d = findDeprecation('frontmatter.home')
     const at = block ? lineLocator(block.text, block.firstLine - 1, block.firstLine)(['home']) : 1
     if (d) out.push(use(d, file, at, 'home', d.replacement))
-  } else {
+  } else if (!hasOwnContent(source)) {
     const d = findDeprecation('frontmatter.implicit-home')
     if (d) out.push(use(d, file, 1, d.old, d.replacement))
   }
